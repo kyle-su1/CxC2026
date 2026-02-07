@@ -62,3 +62,6 @@ ENV/
 # Service Account Keys (Security)
 service-account.json
 *-service-account.json
+
+# Logs
+backend/debug_output.txt

@@ -188,7 +188,7 @@ To ensure the analysis runs within strict time limits:
 
 | Node | Model | Reasoning |
 |------|-------|-----------|
-| **Node 1: Vision** | `gemini-2.0-flash` | Exclusive model for object detection, bounding boxes, and OCR. |
+| **Node 1: Vision** | `gemini-2.0-flash` + Google Lens | Hybrid: Gemini for fast detection (Stage 1), Lens for deep identification (Stage 2). |
 | **Node 2: Research** | N/A (API calls) | Tavily + SerpAPI, no LLM |
 | **Node 2b: Market Scout** | `gemini-2.0-flash` | Fast candidate extraction from search results |
 | **Node 3: Skeptic** | `gemini-2.0-flash` | Deep reasoning for fake review detection |
