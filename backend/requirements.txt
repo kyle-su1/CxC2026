@@ -10,3 +10,5 @@ httpx
 openai
 pillow
 pillow-heif
+snowflake-snowpark-python
+snowflake-connector-python
