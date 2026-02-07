@@ -55,5 +55,13 @@ class AgentState(TypedDict):
     alternatives_analysis: Optional[List[dict]]
     # Structure: List of ReviewSentiment dicts corresponding to candidates
 
+    first_visit: bool = False # Flag for cold start logic
+
+    # Node 6: Chat & Router
+    session_id: Optional[str]
+    chat_history: List[dict] # List of messages: {'role': 'user', 'content': '...'}
+    router_decision: Optional[str] # 'vision_search', 'chat', 'update_preferences', 'market_scout_search'
+    loop_step: Optional[str] # Control flow signal from Chat Node: 'analysis_node', 'market_scout_node', 'end'
+
     # Node 5: Response (The Speaker) - Final Output
     final_recommendation: Optional[dict]

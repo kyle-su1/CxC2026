@@ -40,28 +40,35 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     user_id = 1 # TODO: Get from state when Auth is fully wired across graph
     
     # 1. Load User Preferences
-    # db = SessionLocal()
-    # try:
-    #     # Get explicit quals (from DB or State)
-    #     state_prefs = state.get('user_preferences', {})
-    #     db_prefs = get_user_explicit_preferences(db, user_id)
+    db = SessionLocal()
+    final_weights = {}
+    try:
+        # Get explicit quals (from DB or State)
+        state_prefs = state.get('user_preferences', {})
         
-    #     # Merge explicit (State > DB)
-    #     explicit_prefs = {**db_prefs, **state_prefs}
+        # Determine User ID - try state, then session lookup, then default
+        # user_id is hardcoded to 1 in many places for MVP
+        db_prefs = get_user_explicit_preferences(db, user_id)
         
-    #     # Get learned weights from past behavior
-    #     learned_weights = get_learned_weights(db, user_id)
+        # Merge explicit (State > DB)
+        # If State has params, they override DB (e.g. current session tweaks)
+        explicit_prefs = {**db_prefs, **state_prefs}
         
-    #     # Merge everything
-    #     final_weights = merge_weights(explicit_prefs, learned_weights)
-    #     print(f"   [Analysis] Final Weights: {final_weights}")
+        # Get learned weights from past behavior
+        learned_weights = get_learned_weights(db, user_id)
         
-    # finally:
-    #     db.close()
-
-    # Temporary bypass for testing without DB
-    state_prefs = state.get('user_preferences', {})
-    final_weights = merge_weights(state_prefs, {})
+        # Merge everything
+        final_weights = merge_weights(explicit_prefs, learned_weights)
+        print(f"   [Analysis] Final Weights: {final_weights}")
+        
+    except Exception as e:
+        print(f"   [Analysis] Error loading preferences: {e}")
+        # Fallback
+        state_prefs = state.get('user_preferences', {})
+        final_weights = merge_weights(state_prefs, {})
+        
+    finally:
+        db.close()
     print(f"   [Analysis] Final Weights (DB Skipped): {final_weights}")
         
     # 2. Analyze Alternatives (if available)
