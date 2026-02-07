@@ -329,9 +329,9 @@ The final payload sent to the frontend.
 
 ---
 
-## 7. Redis Caching Strategy
+## 7. Snowflake Caching Strategy
 
-Redis is used to **dramatically reduce latency** and **minimize API costs** by caching repeated queries. This is critical for the "wow factor" of speed.
+Snowflake is used to **reduce latency** and **minimize API costs** by caching repeated queries in a dedicated cache table. This leverages our existing Snowflake connection.
 
 ### **Cache Architecture**
 ```
@@ -341,10 +341,10 @@ Redis is used to **dramatically reduce latency** and **minimize API costs** by c
 │  User Request                                                │
 │       │                                                      │
 │       ▼                                                      │
-│  ┌─────────┐    cache hit     ┌─────────────┐               │
-│  │  Redis  │ ───────────────► │  Instant    │               │
-│  │  Cache  │                  │  Response   │               │
-│  └─────────┘                  └─────────────┘               │
+│  ┌───────────────┐  cache hit   ┌─────────────┐             │
+│  │  QUERY_CACHE  │ ───────────► │  Fast       │             │
+│  │    (Table)    │              │  Response   │             │
+│  └───────────────┘              └─────────────┘             │
 │       │                                                      │
 │       │ cache miss                                           │
 │       ▼                                                      │
@@ -354,75 +354,91 @@ Redis is used to **dramatically reduce latency** and **minimize API costs** by c
 │       │                                                      │
 │       │ cache result                                         │
 │       ▼                                                      │
-│  ┌─────────┐                                                │
-│  │  Redis  │                                                │
-│  └─────────┘                                                │
+│  ┌───────────────┐                                          │
+│  │  QUERY_CACHE  │  (with TTL expiry)                       │
+│  └───────────────┘                                          │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### **Cache Table Schema**
+```sql
+CREATE TABLE IF NOT EXISTS CXC_APP.PUBLIC.QUERY_CACHE (
+    cache_key VARCHAR(64) PRIMARY KEY,    -- MD5 hash of query params
+    cache_type VARCHAR(50),               -- 'tavily', 'serpapi', 'skeptic'
+    query_params VARIANT,                 -- Original request params (JSON)
+    cached_result VARIANT,                -- Response data (JSON)
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    expires_at TIMESTAMP_NTZ,             -- For TTL filtering
+    hit_count INT DEFAULT 0               -- Analytics
+);
 ```
 
 ### **Cache Keys & TTLs**
 
-| Data Type | Key Pattern | TTL | Rationale |
-|-----------|------------|-----|-----------|
-| **Tavily Search** | `tavily:{hash(query)}` | 1 hour | Search results change slowly |
-| **SerpAPI Prices** | `serpapi:{hash(product_name)}` | 15 minutes | Prices fluctuate more often |
-| **Vision Detection** | `vision:{hash(image_base64[:100])}` | 24 hours | Same image = same objects |
-| **Skeptic Analysis** | `skeptic:{product_name}:{hash(reviews)}` | 30 minutes | Reviews don't change within session |
-| **LLM Responses** | `llm:{model}:{hash(prompt)}` | 10 minutes | For identical prompts only |
+| Data Type | Key Pattern | TTL | expires_at Calculation |
+|-----------|------------|-----|------------------------|
+| **Tavily Search** | `tavily:{hash(query)}` | 1 hour | `DATEADD(hour, 1, CURRENT_TIMESTAMP())` |
+| **SerpAPI Prices** | `serpapi:{hash(product_name)}` | 15 minutes | `DATEADD(minute, 15, CURRENT_TIMESTAMP())` |
+| **Skeptic Analysis** | `skeptic:{product}:{hash(reviews)}` | 30 minutes | `DATEADD(minute, 30, CURRENT_TIMESTAMP())` |
 
-### **Implementation Example (Python)**
+### **Implementation** ([`backend/app/services/snowflake_cache.py`](backend/app/services/snowflake_cache.py))
 ```python
-import redis
-import hashlib
-import json
-from functools import wraps
+from app.core.snowflake import get_snowflake_session
+import hashlib, json
 
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
+class SnowflakeCacheService:
+    def get(self, cache_key: str) -> Optional[dict]:
+        """Check cache, return if valid (not expired)."""
+        query = f"""
+        SELECT cached_result FROM QUERY_CACHE 
+        WHERE cache_key = '{cache_key}' 
+          AND expires_at > CURRENT_TIMESTAMP()
+        """
+        results = self.session.sql(query).collect()
+        if results:
+            # Increment hit count
+            self.session.sql(f"UPDATE QUERY_CACHE SET hit_count = hit_count + 1 WHERE cache_key = '{cache_key}'").collect()
+            return json.loads(results[0]['CACHED_RESULT'])
+        return None
+    
+    def set(self, cache_key: str, cache_type: str, params: dict, result: dict, ttl_minutes: int):
+        """Store result with expiry using MERGE (upsert)."""
+        params_json = json.dumps(params).replace("'", "''")
+        result_json = json.dumps(result).replace("'", "''")
+        
+        query = f"""
+        MERGE INTO QUERY_CACHE AS target
+        USING (SELECT '{cache_key}' AS cache_key) AS source
+        ON target.cache_key = source.cache_key
+        WHEN MATCHED THEN UPDATE SET 
+            cached_result = PARSE_JSON('{result_json}'),
+            expires_at = DATEADD(minute, {ttl_minutes}, CURRENT_TIMESTAMP()),
+            hit_count = 0
+        WHEN NOT MATCHED THEN INSERT 
+            (cache_key, cache_type, query_params, cached_result, expires_at)
+        VALUES 
+            ('{cache_key}', '{cache_type}', PARSE_JSON('{params_json}'), 
+             PARSE_JSON('{result_json}'), DATEADD(minute, {ttl_minutes}, CURRENT_TIMESTAMP()))
+        """
+        self.session.sql(query).collect()
 
-def cached(prefix: str, ttl_seconds: int):
-    """Decorator for caching function results in Redis."""
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Generate cache key from function args
-            key_data = json.dumps({"args": args, "kwargs": kwargs}, sort_keys=True)
-            cache_key = f"{prefix}:{hashlib.md5(key_data.encode()).hexdigest()}"
-            
-            # Check cache
-            cached_result = redis_client.get(cache_key)
-            if cached_result:
-                return json.loads(cached_result)
-            
-            # Execute function
-            result = await func(*args, **kwargs)
-            
-            # Store in cache
-            redis_client.setex(cache_key, ttl_seconds, json.dumps(result))
-            return result
-        return wrapper
-    return decorator
-
-# Usage
-@cached(prefix="tavily", ttl_seconds=3600)
-async def search_tavily(query: str) -> dict:
-    # ... actual API call
-    pass
+cache_service = SnowflakeCacheService()
 ```
 
 ### **Cache Invalidation**
-*   **Automatic TTL expiry**: Most cache entries auto-expire.
-*   **Manual invalidation**: Admin endpoint `POST /api/v1/admin/cache/clear` for emergencies.
-*   **Version-based keys**: If APIs change, bump the version in key prefix (e.g., `tavily:v2:{hash}`).
+*   **Automatic TTL expiry**: Queries filter by `expires_at > CURRENT_TIMESTAMP()`.
+*   **Scheduled cleanup**: Daily task to delete expired entries: `DELETE FROM QUERY_CACHE WHERE expires_at < CURRENT_TIMESTAMP()`.
+*   **Manual invalidation**: Admin endpoint `POST /api/v1/admin/cache/clear`.
 
 ### **Expected Performance Gains**
 
 | Scenario | Without Cache | With Cache | Improvement |
 |----------|--------------|------------|-------------|
-| Repeat product query (same session) | 3-5 seconds | <100ms | **50x faster** |
-| Same product across users | 3-5 seconds | <100ms | **50x faster** |
-| Review re-analysis | 2-3 seconds | <50ms | **40x faster** |
-| Full pipeline (cold) | 8-12 seconds | 8-12 seconds | No change |
-| Full pipeline (warm cache) | 8-12 seconds | 1-2 seconds | **6x faster** |
+| Repeat product query (same session) | 3-5 seconds | ~200ms | **20x faster** |
+| Same product across users | 3-5 seconds | ~200ms | **20x faster** |
+| Full pipeline (warm cache) | 15-20 seconds | 3-5 seconds | **4x faster** |
+
+> **Note**: Snowflake cache is slightly slower than Redis (~200ms vs ~10ms) but eliminates additional infrastructure dependency.
 
 ---
 
