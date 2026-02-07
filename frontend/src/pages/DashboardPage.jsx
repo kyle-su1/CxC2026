@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import ImageUploader from '../components/ImageUploader'
 import LogoutButton from '../components/LogoutButton'
 import { useAuth0 } from '@auth0/auth0-react'
-import { analyzeImage } from '../lib/api'
+import { analyzeImage, identifyObject } from '../lib/api'
 import BoundingBoxOverlay from '../components/BoundingBoxOverlay';
 
 const DashboardPage = () => {
@@ -17,6 +17,8 @@ const DashboardPage = () => {
     const [loading, setLoading] = useState(false);
     const [showAlternatives, setShowAlternatives] = useState(false);
     const [selectedObject, setSelectedObject] = useState(null);
+    const [isIdentifying, setIsIdentifying] = useState(false);
+    const [identifiedCache, setIdentifiedCache] = useState({}); // Cache Lens results by object index
 
     // Initialize selectedObject when analysis results load
     useEffect(() => {
@@ -27,6 +29,69 @@ const DashboardPage = () => {
             setSelectedObject(analysisResult.active_product);
         }
     }, [analysisResult]);
+
+    // Handle bounding box click - call Lens API on demand
+    const handleObjectClick = async (obj, idx) => {
+        console.log("[handleObjectClick] Clicked obj:", obj.name, "idx:", idx);
+        setSelectedObject(obj);
+
+        // Check if already identified (cached)
+        if (identifiedCache[idx]) {
+            console.log("[handleObjectClick] Using cached result");
+            const cached = identifiedCache[idx];
+            setSelectedObject({ ...obj, ...cached, lens_status: 'identified' });
+            return;
+        }
+
+        // Skip if already identifying or no image
+        if (isIdentifying || !imageBase64) {
+            console.log("[handleObjectClick] Skipping - isIdentifying:", isIdentifying, "hasImage:", !!imageBase64);
+            return;
+        }
+
+        setIsIdentifying(true);
+        console.log("[handleObjectClick] Calling identifyObject API...");
+        try {
+            const token = await getAccessTokenSilently();
+            const result = await identifyObject(imageBase64, obj.bounding_box, token);
+            console.log("[handleObjectClick] API result:", result);
+
+            // Cache the result
+            setIdentifiedCache(prev => ({ ...prev, [idx]: result }));
+
+            // Update selected object with Lens result
+            setSelectedObject({
+                ...obj,
+                name: result.product_name || obj.name,
+                confidence: result.confidence || obj.confidence,
+                lens_status: 'identified',
+                lens_link: result.link
+            });
+
+            // Update the object in the analysis result
+            setAnalysisResult(prev => {
+                if (!prev?.active_product?.detected_objects) return prev;
+                const updatedObjects = [...prev.active_product.detected_objects];
+                updatedObjects[idx] = {
+                    ...updatedObjects[idx],
+                    name: result.product_name || updatedObjects[idx].name,
+                    confidence: result.confidence || 0.8,
+                    lens_status: 'identified'
+                };
+                return {
+                    ...prev,
+                    active_product: {
+                        ...prev.active_product,
+                        detected_objects: updatedObjects
+                    }
+                };
+            });
+        } catch (error) {
+            console.error("Failed to identify object:", error);
+        } finally {
+            setIsIdentifying(false);
+        }
+    };
 
 
     const handleImageSelected = (file, base64) => {
@@ -142,9 +207,9 @@ const DashboardPage = () => {
                                                     <BoundingBoxOverlay
                                                         key={idx}
                                                         boundingBox={obj.bounding_box}
-                                                        label={`${obj.name} (${Math.round((obj.confidence || 0) * 100)}%)`}
+                                                        label={`${obj.name} ${obj.lens_status === 'identified' ? '✓' : ''}(${Math.round((obj.confidence || 0) * 100)}%)`}
                                                         isSelected={selectedObject?.name === obj.name}
-                                                        onClick={() => setSelectedObject(obj)}
+                                                        onClick={() => handleObjectClick(obj, idx)}
                                                         onHover={(isHovering) => {
                                                             if (isHovering) setActiveProductHover(true);
                                                             else setActiveProductHover(false);

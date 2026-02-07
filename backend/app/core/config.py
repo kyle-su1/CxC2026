@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     TAVILY_API_KEY: Optional[str] = None
     SERPAPI_API_KEY: Optional[str] = None
+    IMGBB_API_KEY: Optional[str] = None  # For fast image hosting
     OPENROUTER_OPENAI_API_KEY: Optional[str] = None
 
     # Snowflake
@@ -31,6 +32,9 @@ class Settings(BaseSettings):
     MODEL_REASONING: str = "gemini-2.0-flash"
     MODEL_ANALYSIS: str = "gemini-2.0-flash"
     MODEL_RESPONSE: str = "gemini-2.0-flash"  # Node 5 - Response Formulation
+
+    # External URL for SerpAPI Lens (ngrok URL in dev)
+    PUBLIC_BASE_URL: str = "http://localhost:8000"
 
     class Config:
         env_file = ".env"

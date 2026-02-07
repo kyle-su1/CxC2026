@@ -1,0 +1,22 @@
+{
+  "search_metadata": {
+    "id": "69878cf13882c58385f319b1",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/UbdnrEfIS_MSjY0HB7b1fw/69878cf13882c58385f319b1.json",
+    "created_at": "2026-02-07 19:05:21 UTC",
+    "processed_at": "2026-02-07 19:05:21 UTC",
+    "google_lens_url": "https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fwww.keychron.com%2Fcdn%2Fshop%2Fproducts%2FKeychron-K8-Pro-QMK-VIA-wireless-mechanical-keyboard-for-Mac-Windows-Linux-rgb-backlight-with-hot-swappable-Gateron-G-Pro-mechanical-switch-brown.jpg&hl=en",
+    "raw_html_file": "https://serpapi.com/searches/UbdnrEfIS_MSjY0HB7b1fw/69878cf13882c58385f319b1.html",
+    "total_time_taken": 2.25
+  },
+  "search_parameters": {
+    "engine": "google_lens",
+    "url": "https://www.keychron.com/cdn/shop/products/Keychron-K8-Pro-QMK-VIA-wireless-mechanical-keyboard-for-Mac-Windows-Linux-rgb-backlight-with-hot-swappable-Gateron-G-Pro-mechanical-switch-brown.jpg",
+    "hl": "en",
+    "country": "CA"
+  },
+  "search_information": {
+    "images_results_state": "Fully empty"
+  },
+  "error": "Google Lens hasn't returned any results for this query."
+}

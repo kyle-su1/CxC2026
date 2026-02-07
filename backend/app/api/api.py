@@ -8,3 +8,12 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(history.router, prefix="/history", tags=["history"])
 from app.api.v1.endpoints import snowflake_test
 api_router.include_router(snowflake_test.router, prefix="/snowflake", tags=["snowflake"])
+
+# Temporary image hosting for SerpAPI Lens
+from app.api.endpoints import images
+api_router.include_router(images.router, prefix="/images", tags=["images"])
+
+# On-demand product identification
+from app.api.endpoints import identify
+api_router.include_router(identify.router, prefix="/agent", tags=["agent"])
+
