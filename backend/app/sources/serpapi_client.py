@@ -1,14 +1,13 @@
-import os
 import requests
-from typing import List
-from backend.app.schemas.types import ProductQuery, PriceOffer
-
+from typing import List, Dict, Any
+from app.schemas.types import ProductQuery, PriceOffer
+from app.core.config import settings
 
 SERPAPI_URL = "https://serpapi.com/search.json"
 
 
 def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
-    api_key = os.getenv("SERPAPI_API_KEY")
+    api_key = settings.SERPAPI_API_KEY
 
     if not api_key:
         trace.append({"step": "serpapi", "detail": "Missing API key"})
@@ -26,21 +25,34 @@ def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
     r = requests.get(SERPAPI_URL, params=params, timeout=10)
     data = r.json()
 
+    if "error" in data:
+        trace.append({"step": "serpapi", "detail": f"API Error: {data['error']}"})
+        return []
+
     offers = []
 
     for item in data.get("shopping_results", []):
-        price_str = item.get("price", "").replace("$", "").replace(",", "")
-        try:
-            price_cents = int(float(price_str) * 100)
-        except:
-            continue
+        # SerpAPI uses "price" (e.g. "$5.88") or "extracted_price" (numeric)
+        price_str = item.get("price") or item.get("extracted_price") or ""
+        if isinstance(price_str, (int, float)):
+            price_cents = int(price_str * 100)
+        else:
+            price_str = str(price_str).replace("$", "").replace(",", "").strip()
+            try:
+                price_cents = int(float(price_str) * 100)
+            except (ValueError, TypeError):
+                continue
 
+        # SerpAPI Google Shopping uses "product_link", not "link"
+        link = item.get("product_link") or item.get("link")
+        if not link:
+            continue
         offers.append(
             PriceOffer(
-                vendor=item.get("source", "Unknown"),
+                vendor=item.get("source") or "Unknown",
                 price_cents=price_cents,
                 currency="CAD",
-                url=item.get("link"),
+                url=link,
             )
         )
 

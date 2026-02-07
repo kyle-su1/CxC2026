@@ -1,25 +1,21 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from functools import lru_cache
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Shopping Suggester"
+    GOOGLE_API_KEY: str
+    TAVILY_API_KEY: str
+    SERPAPI_API_KEY: str
     
-    # Database
-    DATABASE_URL: str
-    
-    # Auth0
-    AUTH0_DOMAIN: str
-    AUTH0_API_AUDIENCE: str
-    AUTH0_ALGORITHM: str = "RS256"
-
-    # External APIs (Optional for now)
-    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
-    TAVILY_API_KEY: Optional[str] = None
-    SERPAPI_API_KEY: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
+    # Models
+    MODEL_VISION: str = "gemini-1.5-flash"
+    MODEL_REASONING: str = "gemini-1.5-pro"
 
     class Config:
-        case_sensitive = True
         env_file = ".env"
+        extra = "ignore" # Allow other env vars
 
-settings = Settings()
+@lru_cache()
+def get_settings():
+    return Settings()
+
+settings = get_settings()
