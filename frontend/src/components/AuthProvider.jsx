@@ -16,7 +16,7 @@ export default function AuthProvider({ children }) {
       clientId={clientId}
       authorizationParams={{
         redirect_uri: window.location.origin,
-        // audience: audience,
+        audience: audience,
       }}
     >
       {children}

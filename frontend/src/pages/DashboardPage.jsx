@@ -26,7 +26,8 @@ const DashboardPage = () => {
             setAnalysisResult(result);
         } catch (error) {
             console.error("Analysis failed:", error);
-            alert("Failed to analyze image. Ensure you are logged in.");
+            const errorMessage = error.response?.data?.detail || error.message || "Unknown error";
+            alert(`Failed to analyze image: ${errorMessage}`);
         } finally {
             setIsAnalyzing(false);
         }

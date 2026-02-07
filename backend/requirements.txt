@@ -1,8 +1,12 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
+python-dotenv
+pydantic-settings
+sqlalchemy
+psycopg2-binary
+python-jose[cryptography]
+httpx
 openai
 pillow
 pillow-heif
-python-dotenv
-google-cloud-vision

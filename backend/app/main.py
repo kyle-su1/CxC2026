@@ -1,3 +1,12 @@
+# Load environment variables FIRST, before any imports that need them
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Find the .env file in the backend directory (parent of 'app')
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
