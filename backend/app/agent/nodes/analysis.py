@@ -93,13 +93,22 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     # Extract reviews for main product
     main_reviews = research.get('reviews', [])
 
+    # Try to find main product image/link from research prices or context
+    main_image = None
+    main_link = None
+    if main_prices:
+        main_image = main_prices[0].get('thumbnail') # SerpAPI often has this
+        main_link = main_prices[0].get('url')
+
     if main_product_name:
         alternatives.append({
             "name": main_product_name,
             "reason": "Original Selection",
             "prices": [{"price": main_price_val}],
             "reviews": main_reviews,
-            "is_main": True
+            "is_main": True,
+            "image_url": main_image,
+            "purchase_link": main_link
         })
 
     alternatives_scored = []
@@ -143,6 +152,10 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             except Exception as e:
                 # logger.warning(f"Skipping review: {e}")
                 pass
+        
+        # Optimization: Limit to top 5 reviews to reduce LLM latency and token usage
+        valid_reviews = valid_reviews[:5]
+        
         sentiment_result = local_skeptic_agent.analyze_reviews(alt.get('name'), valid_reviews)
         sentiment_data = sentiment_result.model_dump()
         
@@ -165,7 +178,11 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "name": alt.get('name'),
             "score_details": score_obj.model_dump(),
             "sentiment_summary": sentiment_data.get('summary'),
-            "reason": alt.get('reason')
+            "reason": alt.get('reason'),
+            "image_url": alt.get('image_url'),          # Pass through
+            "purchase_link": alt.get('purchase_link'),   # Pass through
+            "is_main": alt.get('is_main', False),       # Pass through for identification
+            "price_val": price                          # Pass through for display
         }
 
     # Execute in parallel
@@ -175,20 +192,15 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     start_time = time.time()
     print(f"   [Analysis] Processing {len(alternatives)} candidates in parallel...")
     
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    # Reduce max_workers to 3 to avoid hitting Gemini Rate Limits (RPM) which cause exponential backoff
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_to_alt = {executor.submit(process_candidate, alt): alt for alt in alternatives}
-        
         for future in as_completed(future_to_alt):
-            alt = future_to_alt[future]
             try:
-                cand_start = time.time()
-                result = future.result()
-                # cand_time = time.time() - cand_start # This generic timer isn't per-task anymore in parallel
-                # We can't easily time individual thread execution from outside without wrapping inside
-                # But we can see total time reduction.
-                print(f"       -> Scored {alt.get('name')}")
+                result = future.result(timeout=20)
                 alternatives_scored.append(result)
             except Exception as exc:
+                alt = future_to_alt[future]
                 print(f"   [Analysis] Error processing {alt.get('name')}: {exc}")
                 log_debug(f"Error processing {alt.get('name')}: {exc}")
 

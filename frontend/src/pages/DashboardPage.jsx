@@ -174,17 +174,72 @@ const DashboardPage = () => {
                                 Input Source
                             </h3>
 
-                            <div className="flex-1 flex flex-col">
-                                <ImageUploader
-                                    onImageSelected={handleImageSelected}
-                                    overlays={analysisResult?.objects}
-                                />
+                            <div className="flex-1 flex flex-col relative">
+                                {!imageBase64 ? (
+                                    <ImageUploader
+                                        onImageSelected={handleImageSelected}
+                                        overlays={analysisResult?.objects}
+                                    />
+                                ) : (
+                                    <div className="relative rounded-xl overflow-hidden border border-white/10 group flex-1 bg-black/40 flex items-center justify-center">
+                                        <img
+                                            src={imageBase64}
+                                            alt="Analyzed Item"
+                                            className="w-full h-auto max-h-[500px] object-contain"
+                                        />
+
+                                        {/* SCANNING OVERLAY */}
+                                        <ScanningOverlay isScanning={isAnalyzing} />
+
+                                        {/* MULTI-OBJECT BOUNDING BOX OVERLAY */}
+                                        {/* Defensive check: Ensure analysisResult and active_product exist */}
+                                        {analysisResult && analysisResult.active_product && (
+                                            <>
+                                                {(analysisResult.active_product.detected_objects && analysisResult.active_product.detected_objects.length > 0) ? (
+                                                    analysisResult.active_product.detected_objects.map((obj, idx) => (
+                                                        <BoundingBoxOverlay
+                                                            key={idx}
+                                                            boundingBox={obj?.bounding_box}
+                                                            label={`${obj?.name || 'Object'} ${obj?.lens_status === 'identified' ? '✓' : ''}(${Math.round((obj?.confidence || 0) * 100)}%)`}
+                                                            isSelected={selectedObject?.name === obj?.name}
+                                                            onClick={() => handleObjectClick(obj, idx)}
+                                                            onHover={(isHovering) => {
+                                                                if (setActiveProductHover) setActiveProductHover(isHovering);
+                                                            }}
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    analysisResult.active_product.bounding_box && (
+                                                        <BoundingBoxOverlay
+                                                            boundingBox={analysisResult.active_product.bounding_box}
+                                                            label={analysisResult.active_product.name || 'Product'}
+                                                            onHover={(isHovering) => {
+                                                                if (setActiveProductHover) setActiveProductHover(isHovering);
+                                                            }}
+                                                        />
+                                                    )
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Change Image Button */}
+                                        {!isAnalyzing && (
+                                            <button
+                                                onClick={() => { setImageBase64(null); setImageFile(null); setAnalysisResult(null); }}
+                                                className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-sm transition-colors z-20"
+                                                title="Remove Image"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 {imageFile && (
                                     <button
                                         onClick={handleAnalyze}
                                         disabled={isAnalyzing}
-                                        className="mt-6 w-full py-3 px-4 btn-primary rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                                        className="mt-6 w-full py-3 px-4 btn-primary rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group flex-shrink-0"
                                     >
                                         {isAnalyzing ? (
                                             <>
@@ -212,123 +267,140 @@ const DashboardPage = () => {
                             </h3>
 
                             {/* VISUAL RESULTS */}
-                            {analyzedImage && (
-                                <div className="mb-6 relative rounded-xl overflow-hidden border border-white/10 group flex-shrink-0">
-                                    <img
-                                        src={analyzedImage}
-                                        alt="Analyzed Item"
-                                        className="w-full h-auto object-cover max-h-[400px]"
-                                    />
-
-                                    {/* SCANNING OVERLAY */}
-                                    <ScanningOverlay isScanning={isAnalyzing} />
-
-                                    {/* MULTI-OBJECT BOUNDING BOX OVERLAY */}
-                                    {analysisResult?.active_product && (
-                                        <>
-                                            {/* 1. If we have a list of detected objects, render all of them */}
-                                            {analysisResult.active_product.detected_objects && analysisResult.active_product.detected_objects.length > 0 ? (
-                                                analysisResult.active_product.detected_objects.map((obj, idx) => (
-                                                    <BoundingBoxOverlay
-                                                        key={idx}
-                                                        boundingBox={obj.bounding_box}
-                                                        label={`${obj.name} ${obj.lens_status === 'identified' ? '✓' : ''}(${Math.round((obj.confidence || 0) * 100)}%)`}
-                                                        isSelected={selectedObject?.name === obj.name}
-                                                        onClick={() => handleObjectClick(obj, idx)}
-                                                        onHover={(isHovering) => {
-                                                            if (isHovering) setActiveProductHover(true);
-                                                            else setActiveProductHover(false);
-                                                        }}
-                                                    />
-                                                ))
-                                            ) : (
-                                                /* 2. Fallback to single box */
-                                                analysisResult.active_product.bounding_box && (
-                                                    <BoundingBoxOverlay
-                                                        boundingBox={analysisResult.active_product.bounding_box}
-                                                        label={analysisResult.active_product.name}
-                                                        onHover={setActiveProductHover}
-                                                    />
-                                                )
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            )}
+                            {/* VISUAL RESULTS REMOVED (Moved to Left Panel) */}
 
                             {analysisResult ? (
-                                <div className="animate-fade-in space-y-6">
-                                    {/* Status Banner */}
-                                    <div className={`flex items-center gap-3 p-3 rounded-lg border ${analysisResult.outcome === 'highly_recommended' ? 'bg-green-500/10 border-green-500/20' : 'bg-blue-500/10 border-blue-500/20'} `}>
-                                        <div className={`w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] ${analysisResult.outcome === 'highly_recommended' ? 'bg-green-500 text-green-500' : 'bg-blue-500 text-blue-500'} `}></div>
-                                        <span className={`text-sm font-medium ${analysisResult.outcome === 'highly_recommended' ? 'text-green-400' : 'text-blue-400'} `}>
-                                            {analysisResult.outcome === 'highly_recommended' ? 'Highly Recommended' : 'Consider Alternatives'}
-                                        </span>
-                                    </div>
-
-                                    {/* Main Product Identity */}
-                                    <div>
-                                        <h4 className="text-lg font-semibold text-white mb-1">
-                                            {selectedObject?.name || analysisResult.identified_product || "Unknown Product"}
-                                            {selectedObject?.confidence && (
-                                                <span className="ml-2 text-sm font-normal text-cyan-400">({Math.round(selectedObject.confidence * 100)}% confidence)</span>
-                                            )}
-                                        </h4>
-                                        <p className="text-gray-400 text-sm leading-relaxed">{analysisResult.summary}</p>
-                                    </div>
-
-                                    {/* Key Metrics Grid */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                                            <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Community Trust</span>
-                                            <div className="flex items-end gap-2">
-                                                <span className="text-2xl font-bold text-white">{(analysisResult.community_sentiment?.trust_score || 0).toFixed(1)}</span>
-                                                <span className="text-xs text-gray-500 mb-1">/ 10</span>
+                                <div className="animate-fade-in space-y-8">
+                                    {/* --- MAIN PRODUCT CARD --- */}
+                                    <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+                                        <div className="p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide border ${analysisResult.outcome === 'highly_recommended' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                                                    {analysisResult.outcome === 'highly_recommended' ? 'HIGHLY RECOMMENDED' : 'CONSIDER ALTERNATIVES'}
+                                                </div>
+                                                <span className="text-xs text-gray-400">Confidence: {selectedObject && selectedObject.confidence ? Math.round(selectedObject.confidence * 100) : 88}%</span>
                                             </div>
-                                        </div>
-                                        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                                            <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Price Score</span>
-                                            <div className="flex items-end gap-2">
-                                                <span className="text-2xl font-bold text-white">{(analysisResult.price_analysis?.price_score || 0).toFixed(1)}</span>
-                                                <span className="text-xs text-gray-500 mb-1">/ 1.0</span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-3 pt-2">
-                                        <button
-                                            onClick={() => setShowAlternatives(!showAlternatives)}
-                                            className="flex-1 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 group"
-                                        >
-                                            {showAlternatives ? (
-                                                <>
-                                                    <span>Hide Alternatives</span>
-                                                    <svg className="w-4 h-4 rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span>View Alternatives (Node 2b)</span>
-                                                    <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
+                                            <div className="flex flex-col gap-6">
+                                                {/* Product Info Helper */}
+                                                <div className="flex flex-col md:flex-row gap-6">
+                                                    {/* Main Image */}
+                                                    <div className="w-full md:w-1/3 aspect-square rounded-xl bg-black/40 border border-white/10 overflow-hidden relative group">
+                                                        {analysisResult.active_product?.image_url || analyzedImage ? (
+                                                            <img
+                                                                src={analysisResult.active_product?.image_url || analyzedImage}
+                                                                alt="Main Product"
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">No Image</div>
+                                                        )}
 
-                                    {/* Alternatives List (Hidden by default) */}
-                                    {showAlternatives && analysisResult.alternatives && analysisResult.alternatives.length > 0 && (
-                                        <div className="animate-fade-in pt-4 border-t border-white/5 mt-4">
-                                            <span className="text-xs text-gray-500 uppercase tracking-widest block mb-3">Comparison</span>
-                                            <div className="space-y-3">
-                                                {analysisResult.alternatives.map((alt, idx) => (
-                                                    <div key={idx} className="p-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <span className="font-medium text-white">{alt.name}</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded ${alt.score > 30 ? 'bg-green-500/20 text-green-300' : 'bg-gray-700 text-gray-300'} `}>
-                                                                Score: {alt.score?.toFixed(1)}
-                                                            </span>
+                                                        {analysisResult.active_product?.purchase_link && (
+                                                            <a
+                                                                href={analysisResult.active_product.purchase_link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="absolute bottom-3 right-3 p-2 bg-white text-black rounded-full shadow-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                                                                title="View Store Page"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                                            </a>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Details Column */}
+                                                    <div className="flex-1">
+                                                        <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                                                            {analysisResult.identified_product || "Unknown Product"}
+                                                        </h2>
+                                                        <p className="text-gray-400 text-sm leading-relaxed mb-6 border-l-2 border-white/10 pl-4 py-1">
+                                                            {analysisResult.summary || "No summary available."}
+                                                        </p>
+
+                                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                                            <div className="bg-black/20 rounded-lg p-3">
+                                                                <span className="text-[10px] uppercase text-gray-500 tracking-wider">Best Price</span>
+                                                                <div className="flex items-baseline gap-1 mt-1">
+                                                                    <span className="text-xl font-bold text-white">
+                                                                        {analysisResult.active_product?.price_text || "Check Price"}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="bg-black/20 rounded-lg p-3">
+                                                                <span className="text-[10px] uppercase text-gray-500 tracking-wider">Verdict</span>
+                                                                <div className="mt-1">
+                                                                    <span className="text-sm font-medium text-white block truncate">{analysisResult.price_analysis?.verdict || "N/A"}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-xs text-gray-400">{alt.reason}</p>
+
+                                                        {analysisResult.active_product?.purchase_link ? (
+                                                            <a
+                                                                href={analysisResult.active_product.purchase_link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center justify-center w-full py-3 bg-white text-black font-semibold text-sm rounded-lg hover:bg-gray-200 transition-colors gap-2"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                                                Buy Now
+                                                            </a>
+                                                        ) : (
+                                                            <button disabled className="block w-full py-3 bg-white/10 text-gray-500 font-semibold text-sm rounded-lg cursor-not-allowed">
+                                                                Link Unavailable
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* --- ALTERNATIVES SECTION --- */}
+                                    {analysisResult.alternatives && analysisResult.alternatives.length > 0 && (
+                                        <div>
+                                            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                                                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                Top Alternatives
+                                            </h3>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                                                {analysisResult.alternatives.map((alt, idx) => (
+                                                    <div key={idx} className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-white/20 transition-all group flex flex-col h-full">
+                                                        {/* Alt Image Header */}
+                                                        <div className="h-40 bg-black/40 relative overflow-hidden flex-shrink-0">
+                                                            {alt.image ? (
+                                                                <img src={alt.image} alt={alt.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-700 bg-white/5">No Image</div>
+                                                            )}
+                                                            <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-white border border-white/10">
+                                                                Score: {Math.round(alt.score || 0)}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="p-4 flex flex-col flex-1">
+                                                            <h4 className="font-semibold text-white mb-1 line-clamp-1" title={alt.name}>{alt.name}</h4>
+                                                            <p className="text-xs text-gray-400 mb-3 line-clamp-2">{alt.reason}</p>
+
+                                                            <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
+                                                                <div className="text-sm font-medium text-white">
+                                                                    {alt.price_text || "Price N/A"}
+                                                                </div>
+                                                                {alt.link ? (
+                                                                    <a
+                                                                        href={alt.link}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-xs bg-white text-black px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors font-medium"
+                                                                    >
+                                                                        View Item
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-600 cursor-not-allowed">No Link</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
