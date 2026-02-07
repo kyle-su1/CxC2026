@@ -58,3 +58,18 @@ def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
 
     trace.append({"step": "serpapi", "detail": f"Found {len(offers)} offers"})
     return offers
+
+
+def check_single_price(query: str) -> str | None:
+    """
+    Quickly checks the price of a product query.
+    Returns a formatted price string (e.g. '$149.99 CAD') or None.
+    """
+    temp_query = ProductQuery(canonical_name=query)
+    offers = get_shopping_offers(temp_query, [])
+    if offers:
+        # Sort by price to get the lowest reasonable price
+        offers.sort(key=lambda x: x.price_cents)
+        best_offer = offers[0]
+        return f"${best_offer.price_cents / 100:.2f} {best_offer.currency}"
+    return None

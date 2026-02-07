@@ -20,12 +20,19 @@ class AgentState(TypedDict):
     #   'context': str 
     # }
 
-    # Node 2: Discovery (The Runner)
+    # Node 2a: Discovery (The Runner)
     research_data: Optional[dict]
     # Structure: {
     #   'search_results': list, 
     #   'reviews': list,
     #   'competitor_prices': list
+    # }
+
+    # Node 2b: Market Scout (The Explorer)
+    market_scout_data: Optional[dict]
+    # Structure: {
+    #    'strategy': str,
+    #    'raw_search_results': list
     # }
 
     # Node 3: Skeptic (Critique)

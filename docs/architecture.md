@@ -55,14 +55,30 @@ This phase runs two parallel agents to gather deep data on the target product AN
 
 ### **Node 2b: Market Scout (The "Explorer")**
 *   **Input**: Structured Product Query + User Preferences (from State).
-*   **Goal**: Find relevant *alternatives* or *competitors* based on the user's needs.
-*   **Bahavior**:
-    1.  **Contextual Search**: If user values "price", search for "best budget alternative to [Product]". If "quality", search "better than [Product]".
-    2.  **Live Market Data**: Unlike a static database, this agent searches the live web for current "Best of 2026" lists and comparisons.
-*   **Responsibilities**:
-    1.  Identify 2-3 strong competitors.
-    2.  Fetch basic pricing and rating for these alternatives.
-*   **Output**: List of Alternative Candidates (Name, Price, Reason for selection).
+*   **Goal**: Find relevant *alternatives* or *competitors* based on the user's needs, then enrich them with full data.
+*   **Behavior**:
+    1.  **Strategy Selection**: Based on user preferences (`price_sensitivity`, `quality`), determine search strategy ("cheaper alternative" vs "premium alternative").
+    2.  **Contextual Search**: Uses **Tavily API** to search for "best budget alternative to [Product] 2026 reddit" or similar queries.
+    3.  **LLM Extraction**: Uses **Gemini 2.0 Flash** to parse search results and extract top 3 candidate product names with reasons.
+    4.  **Candidate Enrichment** (Node 2a Logic for Alternatives):
+        *   For each candidate, fetch **all prices** via **SerpAPI** (stored as full list for Node 3).
+        *   For each candidate, fetch **review snippets** via **Tavily** (stored as full list for Node 3).
+        *   Calculate **median price** for display (filters out accessory/outlier prices).
+*   **Output**: 
+    ```json
+    {
+      "strategy": "cheaper alternative",
+      "candidates": [
+        {
+          "name": "Sony WH-1000XM4",
+          "reason": "Strong noise cancellation at lower price",
+          "estimated_price": "$386.99 CAD",
+          "prices": [{"vendor": "Best Buy", "price": 349.99, ...}, ...],
+          "reviews": [{"source": "Reddit", "snippet": "...", ...}, ...]
+        }
+      ]
+    }
+    ```
 
 ### **Node 3: The Skeptic (Critique & Verification)**
 *   **Input**: Raw product data (Main Item) + Alternative Candidates (Scout).

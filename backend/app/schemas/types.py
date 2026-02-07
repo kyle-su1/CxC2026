@@ -35,3 +35,12 @@ class PriceOffer(BaseModel):
 class SourceTrace(BaseModel):
     step: str
     detail: str
+
+
+class ProductCandidate(BaseModel):
+    name: str
+    reason: str
+    estimated_price: Optional[str] = None
+    pros: List[str] = []
+    cons: List[str] = []
+    source_url: Optional[str] = None
