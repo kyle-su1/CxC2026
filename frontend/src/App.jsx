@@ -39,21 +39,27 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white p-4 md:p-8">
-      <div className="w-full h-full max-w-7xl mx-auto">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-              Shopping Suggester
-            </h1>
-            <p className="text-gray-400 mt-2 text-lg">
-              Upload an image to process with our Agentic Workflow.
-            </p>
+    <div className="min-h-screen bg-[#0B0C10] text-white font-sans selection:bg-purple-500/30 relative overflow-hidden">
+      {/* Animated Gradient Background */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-500/20 blur-[120px] animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[60%] rounded-full bg-indigo-500/10 blur-[120px] animate-[pulse_10s_ease-in-out_infinite_reverse]" />
+        <div className="absolute bottom-[0%] left-[20%] w-[60%] h-[40%] rounded-full bg-blue-500/10 blur-[100px] animate-[pulse_12s_ease-in-out_infinite]" />
+      </div>
+
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+
+      <div className="relative w-full max-w-6xl mx-auto px-6 py-12 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-24 anim-fade-in">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <div className="w-6 h-6 rounded bg-gradient-to-tr from-indigo-500 to-purple-500 group-hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-300" />
+            <span className="font-semibold text-sm tracking-wide text-gray-300 group-hover:text-white transition-colors">CxC 2026</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             {isAuthenticated ? (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-300">Welcome, {user.name}</span>
+              <div className="flex items-center gap-4 bg-white/5 pr-2 pl-4 py-1.5 rounded-full border border-white/5 hover:border-white/10 transition-colors">
+                <span className="text-xs font-medium text-gray-400">Welcome, {user.name}</span>
                 <LogoutButton />
               </div>
             ) : (
@@ -62,62 +68,164 @@ function App() {
           </div>
         </header>
 
-        {isAuthenticated ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 border border-white/20 shadow-2xl flex flex-col">
-              <h2 className="text-2xl font-semibold mb-4 text-white/90">Input Image</h2>
-              <div className="flex-1 flex flex-col">
-                <ImageUploader onImageSelected={handleImageSelected} />
-                {imageFile && (
-                  <button
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing}
-                    className="mt-4 py-3 px-6 bg-blue-600 hover:bg-blue-700 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isAnalyzing ? "Analyzing..." : "Analyze Image"}
-                  </button>
-                )}
-              </div>
+        {/* Hero Section */}
+        <div className="flex-1 flex flex-col items-center max-w-4xl mx-auto w-full">
+          <div className="text-center mb-16 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-purple-300 mb-4 animate-fade-in-up">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+              </span>
+              Agentic Workflow Engine v1.0
             </div>
 
-            <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 border border-white/10 shadow-xl flex flex-col">
-              <h2 className="text-2xl font-semibold mb-4 text-white/90">Processing Results</h2>
-              {analysisResult ? (
-                <div className="p-4 bg-black/30 rounded-xl border border-white/10">
-                  <h3 className="text-xl font-semibold mb-2 text-green-400">Analysis Complete</h3>
-                  <div className="space-y-2">
-                    <p><span className="text-gray-400">Item:</span> <span className="font-medium">{analysisResult.item_name}</span></p>
-                    <p className="text-gray-300">{analysisResult.description}</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {analysisResult.detected_keywords?.map((kw, i) => (
-                        <span key={i} className="px-3 py-1 bg-gray-700 rounded-full text-sm text-gray-300">#{kw}</span>
-                      ))}
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
+              Shop Smarter with <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 glow-text">
+                AI Agent Intelligence
+              </span>
+            </h1>
+
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Upload any product image. Our autonomous agents verify details, compare prices across the web, and analyze sentiment to give you the perfect recommendation.
+            </p>
+          </div>
+
+          {/* Main Interaction Area */}
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            {isAuthenticated ? (
+              <>
+                {/* Left Panel: Upload */}
+                <div className="lg:col-span-5 glass-panel rounded-2xl p-1 transition-all duration-300 hover:border-white/20">
+                  <div className="bg-[#121214] rounded-xl p-6 h-full flex flex-col">
+                    <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                      Input Source
+                    </h3>
+                    <div className="flex-1 min-h-[300px] flex flex-col">
+                      <ImageUploader onImageSelected={handleImageSelected} />
+
+                      {imageFile && (
+                        <button
+                          onClick={handleAnalyze}
+                          disabled={isAnalyzing}
+                          className="mt-6 w-full py-3 px-4 btn-primary rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              Start Agent Workflow
+                              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              ) : imageFile ? (
-                <div className="flex-1 space-y-6 overflow-y-auto">
-                  <div className="p-4 bg-black/30 rounded-xl border border-white/10">
-                    <h3 className="text-xl font-semibold mb-2 text-blue-300">Ready to Analyze</h3>
-                    <p className="text-gray-400">Click "Analyze Image" to start the workflow.</p>
+
+                {/* Right Panel: Results */}
+                <div className="lg:col-span-7 glass-panel rounded-2xl p-1 min-h-[400px]">
+                  <div className="bg-[#121214] rounded-xl p-6 h-full flex flex-col">
+                    <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                      Agent Output
+                    </h3>
+
+                    {analysisResult ? (
+                      <div className="animate-fade-in space-y-6">
+                        {/* Status Banner */}
+                        <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                          <span className="text-sm text-green-400 font-medium">Analysis Complete</span>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="space-y-4">
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase tracking-widest">Identified Item</span>
+                            <h2 className="text-2xl font-semibold text-white mt-1">{analysisResult.item_name}</h2>
+                          </div>
+
+                          <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                            <p className="text-gray-300 leading-relaxed text-sm">{analysisResult.description}</p>
+                          </div>
+
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase tracking-widest block mb-2">Detected Signals</span>
+                            <div className="flex flex-wrap gap-2">
+                              {analysisResult.detected_keywords?.map((kw, i) => (
+                                <span key={i} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded text-xs text-gray-400 hover:text-white hover:border-white/20 transition-all cursor-default">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* JSON Data Toggle (Hidden by default or refined) */}
+                        <div className="pt-4 border-t border-white/5">
+                          <details className="group">
+                            <summary className="cursor-pointer text-xs text-gray-600 hover:text-gray-400 transition-colors list-none flex items-center gap-2">
+                              <span className="group-open:rotate-90 transition-transform">▸</span>
+                              View Raw Agent Data
+                            </summary>
+                            <pre className="mt-3 text-[10px] text-gray-500 bg-black/50 p-4 rounded-lg overflow-x-auto font-mono">
+                              {JSON.stringify(analysisResult, null, 2)}
+                            </pre>
+                          </details>
+                        </div>
+                      </div>
+                    ) : isAnalyzing ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/20 animate-[spin_10s_linear_infinite]"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">Analyzing Visual Data</p>
+                          <p className="text-sm text-gray-500 mt-1">Extracting features and identifying products...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-12">
+                        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-2 group-hover:bg-white/10 transition-colors">
+                          <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        </div>
+                        <div className="max-w-xs mx-auto">
+                          <p className="text-gray-400 text-sm">Results will appear here after analysis.</p>
+                          <p className="text-gray-600 text-xs mt-2">The agent will break down the image into actionable data points.</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-gray-500">
-                  <p>Upload an image to see details and processing options.</p>
+              </>
+            ) : (
+              /* Login State */
+              <div className="col-span-1 lg:col-span-8 lg:col-start-3 glass-panel rounded-2xl p-12 text-center">
+                <div className="max-w-md mx-auto space-y-8">
+                  <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_40px_rgba(99,102,241,0.3)]">
+                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-3">Authentication Required</h2>
+                    <p className="text-gray-400">Unlock the full potential of our agentic workflow. Verify your identity to access real-time market analysis.</p>
+                  </div>
+                  <LoginButton />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-96 bg-white/5 rounded-3xl border border-white/10 p-8 text-center">
-            <h2 className="text-3xl font-bold mb-4">Please Log In</h2>
-            <p className="text-gray-400 mb-8 max-w-md">
-              You need to be authenticated to use the Shopping Suggester features.
-            </p>
-            <LoginButton />
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
