@@ -1,0 +1,108 @@
+import { useState, useRef } from 'react'
+
+const ImageUploader = ({ onImageSelected }) => {
+    const [preview, setPreview] = useState(null)
+    const [isDragging, setIsDragging] = useState(false)
+    const fileInputRef = useRef(null)
+
+    const handleFile = (file) => {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = () => {
+                const base64 = reader.result
+                setPreview(base64)
+                if (onImageSelected) {
+                    onImageSelected(file, base64)
+                }
+            }
+        }
+    }
+
+    const handleDrop = (e) => {
+        e.preventDefault()
+        setIsDragging(false)
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0])
+        }
+    }
+
+    const handleDragOver = (e) => {
+        e.preventDefault()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (e) => {
+        e.preventDefault()
+        setIsDragging(false)
+    }
+
+    const handleClick = () => {
+        fileInputRef.current.click()
+    }
+
+    const handleInputChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0])
+        }
+    }
+
+    return (
+        <div className="w-full h-full">
+            <div
+                onClick={handleClick}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={`
+          relative group cursor-pointer 
+          border-2 border-dashed rounded-2xl p-4
+          transition-all duration-300 ease-in-out
+          flex flex-col items-center justify-center
+          h-full min-h-[400px] w-full
+          ${isDragging
+                        ? 'border-blue-500 bg-blue-500/10 scale-[1.01]'
+                        : 'border-gray-600 hover:border-blue-400 hover:bg-white/5'
+                    }
+        `}
+            >
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleInputChange}
+                    className="hidden"
+                    accept="image/*"
+                />
+
+                {preview ? (
+                    <div className="relative w-full h-full flex flex-col items-center">
+                        <img
+                            src={preview}
+                            alt="Preview"
+                            className="max-h-full w-auto rounded-lg shadow-xl object-contain p-2"
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                            <p className="text-white font-medium">Click or Drop to Replace</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center">
+                        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-700/50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <svg className="w-10 h-10 text-gray-400 group-hover:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <p className="text-xl font-medium text-gray-200 mb-2">
+                            Drop your image here
+                        </p>
+                        <p className="text-sm text-gray-400">
+                            or click to browse from your computer
+                        </p>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+export default ImageUploader
