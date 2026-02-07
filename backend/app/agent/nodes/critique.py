@@ -56,6 +56,7 @@ def node_skeptic_critique(state: AgentState) -> Dict[str, Any]:
     
     Return a JSON object:
     {{
+        "trust_score": 5.0 (float 0-10, where 10 is perfectly trustworthy),
         "fake_review_likelihood": "High/Medium/Low + explanation",
         "price_integrity": "Is it a real deal or markup?",
         "hidden_flaws": ["List of specific complaints found"]

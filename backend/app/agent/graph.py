@@ -81,12 +81,13 @@ workflow.add_conditional_edges(
     }
 )
 
-# Vision -> Research & Scout
+# Vision -> Research (sequential flow)
 workflow.add_edge("vision_node", "research_node")
-workflow.add_edge("vision_node", "market_scout_node")
 
-# Research & Scout -> Skeptic
-workflow.add_edge("research_node", "skeptic_node")
+# Research -> Market Scout
+workflow.add_edge("research_node", "market_scout_node")
+
+# Market Scout -> Skeptic
 workflow.add_edge("market_scout_node", "skeptic_node")
 
 # Skeptic -> Analysis

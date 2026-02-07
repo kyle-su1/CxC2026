@@ -63,6 +63,17 @@ The system uses a **Two-Stage Pipeline** managed by **LangGraph**.
 
 ## 🧩 Deep Dive: Agent Nodes
 
+### **Node 1: User Intent & Vision (The "Eye")**
+*   **Input**: User uploaded image (Screenshot) + Text Prompt.
+*   **Model**: **Gemini 2.0 Flash**.
+*   **Responsibilities**:
+    1.  **Multi-Object Detection**: Identifies **all** distinct objects/products in the image.
+    2.  **High Specificity Identification**: Extracts precise Brand, Model, Color, Version (e.g., "Nike Air Jordan 1 Retro High Blue").
+    3.  **Visual Attributes**: Generates keywords for similarity search (e.g., "blue, leather, high-top").
+    4.  **Bounding Boxes**: Returns normalized coordinates [ymin, xmin, ymax, xmax] for each object.
+    5.  **Context Extraction**: Reads text on screen (OCR).
+*   **Output**: Structured Product Query containing a list of `detected_objects` and `visual_attributes`.
+
 ### **Node 2: Discovery Layer (The "Researcher" & "Explorer")**
 This phase runs two parallel agents to gather deep data.
 
@@ -79,11 +90,14 @@ This phase runs two parallel agents to gather deep data.
 *   **Goal**: Find relevant *alternatives* based on the user's needs.
 *   **Tools**:
     *   **Tavily Search**: For live web results (External Discovery).
+    *   **SerpAPI**: For real-time pricing and shopping links.
     *   **Snowflake Vector Search**: For internal product catalog similarity (Internal Discovery).
 *   **Model**: **Gemini 2.0 Flash** (`gemini-2.0-flash`) for fast candidate extraction.
+*   **Strategy**: Hybrid Discovery (Internal + External Fusion).
 *   **Vector Feedback Loop**:
     *   Validated external findings (from Tavily) are **upserted** to Snowflake `products` with 3072-dim embeddings.
     *   **Purpose**: Continually expands the internal knowledge base with high-quality findings.
+*   **Data Capture**: Extracts `thumbnail` (as image_url), `price_text`, and `purchase_link` from shopping results.
 
 ### **Node 3: The Skeptic (Critique & Verification)**
 *   **Input**: Raw product data (Main Item) + Alternative Candidates (Scout).
@@ -125,6 +139,52 @@ This phase runs two parallel agents to gather deep data.
 
 ---
 
+<<<<<<< Updated upstream
+=======
+## 4. Frontend Integration
+### **Layout Strategy**
+*   **Left Panel**: **Input & Interaction**.
+    *   Displays the uploaded/analyzed image.
+    *   **Scanning Overlay**: Visual scanning effect during analysis.
+    *   **Interactive Bounding Boxes**: Clickable overlays for specific object identification (Google Lens style).
+*   **Right Panel**: **Agent Output & Analysis**.
+    *   **Main Product Card**: High-highlight display of the identified product with Image, Price, Trust Score, Verdict, and "Buy Now" button.
+    *   **Alternatives Grid**: Visual grid of recommended alternatives with images, prices, and "View Item" links.
+
+### **Interactive Bounding Boxes**
+The frontend (`DashboardPage.jsx`) uses the `detected_objects` list from the API response to render interactive overlays on the **Left Panel**:
+
+1.  **Rendering**: A `BoundingBoxOverlay` component is mapped over the `detected_objects` array.
+2.  **Coordinates**: Gemini returns normalized coordinates (0-1000). The frontend converts these to percentage-based CSS (`top`, `left`, `width`, `height`) to overlay correctly on the responsive image.
+3.  **Interaction**: 
+    *   **Hover**: Displays object name/confidence.
+    *   **Click**: Triggers "Lens" identification for that specific object (future implementation).
+4.  **Layout**: The image container uses `flex-shrink-0` to ensure it remains visible.
+
+### **Latency Optimization Strategy**
+To ensure the analysis runs within strict time limits:
+*   **Parallelism**: Nodes 2 (Research) and 2b (Scout) use `ThreadPoolExecutor` for external API calls.
+*   **Candidate Limiting**: Market Scout limits enrichment to the **Top 3** candidates to prevent API fan-out.
+*   **Timeouts**: All parallel executions have strict timeouts (10-20s) to prevent hanging.
+*   **Context Pruning**: The "Skeptic" agent only analyzes the Top 5 reviews per product to reduce LLM input tokens.
+
+---
+
+## 🛠️ Troubleshooting
+
+**1. "Backend Connection Refused"**
+*   Ensure `VITE_API_URL` is correct.
+*   Check if backend is running: `docker-compose ps`.
+
+**2. "Google Lens Failed"**
+*   Check `IMGBB_API_KEY`. Images must be public for Lens to see them.
+*   Check `SERPAPI_API_KEY`.
+
+**3. "Database Connection Failed"**
+*   Ensure PostgreSQL container is healthy (`docker-compose ps`).
+*   Check credentials in `micros/auth/app/core/config.py` (default: `user`/`password`).
+
+>>>>>>> Stashed changes
 ---
 
 ## 9. Model Summary

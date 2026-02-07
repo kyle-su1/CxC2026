@@ -41,7 +41,10 @@ def node_response_formulation(state: AgentState) -> Dict[str, Any]:
             "name": alt.get("name"),
             "score": alt.get("score_details", {}).get("total_score", 0),
             "summary": alt.get("sentiment_summary", ""),
-            "reason": alt.get("reason", "")
+            "reason": alt.get("reason", ""),
+            "image": alt.get("image_url"),
+            "link": alt.get("purchase_link"),
+            "price_text": alt.get("score_details", {}).get("price_val", 0) # Raw value for LLM context
         })
     
     # Initialize Speaker Agent with MODEL_RESPONSE
@@ -62,13 +65,13 @@ Name: {analysis.get('recommended_product', 'Unknown')}
 Details: {json.dumps(analysis, indent=2)}
 Risk Report: {json.dumps(risk_report, indent=2)}
 
-=== ALTERNATIVES & COMPETITORS ===
+=== ALTERNATIVES & COMPETITORS (Data) ===
 {json.dumps(products_detail, indent=2)}
 
 === YOUR TASK ===
 Generate a JSON object strictly matching the following schema. 
-Do not include Markdown. Do not include 'main_product' wrapper key.
-The root keys must trigger the specific frontend visualizers.
+Do not include Markdown. The root keys must trigger the specific frontend visualizers.
+IMPORTANT: You MUST copy the 'image' and 'link' fields from the 'ALTERNATIVES & COMPETITORS' data exactly as provided into your output.
 
 STRICT JSON OUTPUT FORMAT:
 {{
@@ -81,7 +84,7 @@ STRICT JSON OUTPUT FORMAT:
         "details": "Price context vs market"
     }},
     "community_sentiment": {{
-        "trust_score": {trust_score} (0-10 float),
+        "trust_score": {trust_score},
         "summary": "What are users saying?",
         "red_flags": {json.dumps(risk_report.get('hidden_flaws', []))}
     }},
@@ -89,7 +92,10 @@ STRICT JSON OUTPUT FORMAT:
         {{
             "name": "Alt Product Name",
             "score": 0.0 to 100.0,
-            "reason": "Why consider this?"
+            "reason": "Why consider this?",
+            "image": "URL_FROM_DATA",
+            "link": "URL_FROM_DATA",
+            "price_text": "$123.00 CAD"
         }}
     ]
 }}
@@ -107,7 +113,7 @@ STRICT JSON OUTPUT FORMAT:
         
         content = response.content
         
-        # Clean up response - remove markdown code blocks if present
+        # Clean up response
         if '```json' in content:
             content = content.split('```json')[1].split('```')[0]
         elif '```' in content:
@@ -116,13 +122,27 @@ STRICT JSON OUTPUT FORMAT:
         content = content.strip()
         final_payload = json.loads(content)
         
-        # Inject Vision Data into Final Payload
+        # Inject Vision Data & Main Product Link/Image into Final Payload
+        # We need to find the main product's metadata from alternatives_analysis list
+        main_prod_meta = next((item for item in alternatives_analysis if item.get("is_main")), {})
+        
         product_query = state.get('product_query', {})
         final_payload['active_product'] = {
             "name": final_payload.get('identified_product'),
             "bounding_box": state.get('bounding_box'),
-            "detected_objects": product_query.get('detected_objects', [])
+            "detected_objects": product_query.get('detected_objects', []),
+            "image_url": main_prod_meta.get("image_url"),     # New field
+            "purchase_link": main_prod_meta.get("purchase_link"), # New field
+            "price_text": f"${main_prod_meta.get('price_val', 0):.2f}" if main_prod_meta.get('price_val') else "Check Price"
         }
+
+        # Double check alternatives have links (sometimes LLM hallucinates or drops them)
+        # We enforce them from our source data just in case
+        for alt in final_payload.get('alternatives', []):
+            matching_source = next((p for p in products_detail if p['name'] == alt['name']), None)
+            if matching_source:
+                alt['image'] = matching_source.get('image')
+                alt['link'] = matching_source.get('link')
 
         logger.info(f"Successfully generated response for: {final_payload.get('identified_product')}")
         log_debug(f"Response Node Payload: {final_payload}")

@@ -1,21 +1,14 @@
 from typing import Dict, Any
-import os
-import json
 import base64
-import google.generativeai as genai
 from app.agent.state import AgentState
-
-# Configure Gemini API
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+from app.services.lens_identify import identify_product_with_lens
 
 def node_user_intent_vision(state: AgentState) -> Dict[str, Any]:
     """
     Node 1: User Intent & Vision (The "Eye")
     
-    Uses Gemini for FAST bounding box detection.
-    Lens identification is done on-demand when user clicks a box.
+    Uses Google Lens (via SerpAPI) for accurate product identification.
+    Provides knowledge graph matches, visual matches, and shopping results.
     
     Input: state['image_base64'], state['user_query']
     Output: state update with 'product_query'
@@ -29,14 +22,11 @@ def node_user_intent_vision(state: AgentState) -> Dict[str, Any]:
         except:
             pass
 
-    log_debug("--- 1. Executing Vision Node (Gemini Fast Mode) ---")
-    print("--- 1. Executing Vision Node (Gemini Fast Mode) ---")
+    log_debug("--- 1. Executing Vision Node (Google Lens Mode) ---")
+    print("--- 1. Executing Vision Node (Google Lens Mode) ---")
 
     image_data = state.get("image_base64")
     user_query = state.get("user_query", "")
-
-    if not GOOGLE_API_KEY:
-        return {"product_query": {"error": "GOOGLE_API_KEY not configured"}}
 
     if not image_data:
         return {"product_query": {"error": "No image provided"}}
@@ -45,63 +35,56 @@ def node_user_intent_vision(state: AgentState) -> Dict[str, Any]:
     start_time = time.time()
     
     try:
+        # Extract base64 data if it includes the data URL prefix
         if "base64," in image_data:
             image_data = image_data.split("base64,")[1]
 
         image_bytes = base64.b64decode(image_data)
         
-        model = genai.GenerativeModel('gemini-2.0-flash')
-
-        prompt = """
-        Analyze this image and detect all distinct objects or products.
-        For EACH object, provide a brief name and bounding box.
+        log_debug("Sending request to Google Lens via SerpAPI...")
         
-        Return ONLY a JSON object:
-        {
-            "detected_objects": [
-                {
-                    "name": "Brief description",
-                    "bounding_box": [ymin, xmin, ymax, xmax]
-                }
-            ],
-            "primary_product": "Name of main/largest product",
-            "context": "Any visible text like price, brand"
-        }
+        # Call Google Lens for product identification
+        lens_result = identify_product_with_lens(image_bytes, extension="jpg")
         
-        bounding_box coordinates are normalized 0-1000.
-        """
-
-        log_debug("Sending request to Gemini...")
-        gemini_start = time.time()
-        response = model.generate_content([
-            {'mime_type': 'image/jpeg', 'data': image_bytes},
-            prompt
-        ])
-        gemini_time = time.time() - gemini_start
-        log_debug(f"Gemini API took {gemini_time:.2f}s")
-        print(f"--- Vision Node: Gemini API took {gemini_time:.2f}s ---")
+        if "error" in lens_result:
+            log_debug(f"Lens error: {lens_result['error']}")
+            return {"product_query": {
+                "error": lens_result["error"],
+                "canonical_name": "Unknown Item",
+                "detected_objects": []
+            }}
         
-        content = response.text.replace('```json', '').replace('```', '').strip()
-        gemini_data = json.loads(content)
+        product_name = lens_result.get("product_name", "Unknown Product")
+        confidence = lens_result.get("confidence", 0.5)
+        source = lens_result.get("source", "lens")
         
-        detected_objects = gemini_data.get('detected_objects', [])
-        log_debug(f"Gemini detected {len(detected_objects)} objects")
+        log_debug(f"Google Lens identified: {product_name} (confidence: {confidence})")
         
-        # Add pending status for Lens identification
-        for obj in detected_objects:
-            obj['lens_status'] = 'pending'  # Will be 'identified' after Lens call
-            obj['confidence'] = 0.5  # Low confidence until Lens confirms
+        # Create a detected object from Lens result
+        detected_objects = [{
+            "name": product_name,
+            "bounding_box": [0, 0, 1000, 1000],  # Full image as bounding box
+            "confidence": confidence,
+            "lens_status": "identified",
+            "source": source,
+            "link": lens_result.get("link")
+        }]
         
         total_time = time.time() - start_time
         print(f"--- Vision Node: Total time {total_time:.2f}s ---")
         
         return {
             "product_query": {
-                "canonical_name": gemini_data.get('primary_product', 'Unknown'),
-                "context": gemini_data.get('context', ''),
+                "canonical_name": product_name,
+                "visual_attributes": "",  # Lens doesn't provide this directly
+                "context": f"Identified via Google Lens ({source}). "
+                           f"Visual matches: {lens_result.get('visual_matches_count', 0)}, "
+                           f"Shopping results: {lens_result.get('shopping_results_count', 0)}",
                 "detected_objects": detected_objects,
+                "lens_confidence": confidence,
+                "lens_source": source,
             },
-            "bounding_box": detected_objects[0].get('bounding_box') if detected_objects else None
+            "bounding_box": [0, 0, 1000, 1000]
         }
 
     except Exception as e:
@@ -109,9 +92,7 @@ def node_user_intent_vision(state: AgentState) -> Dict[str, Any]:
         total_time = time.time() - start_time
         print(f"--- Vision Node Failed after {total_time:.2f}s ---")
         return {"product_query": {
-            "product_name": "Unknown Item",
+            "canonical_name": "Unknown Item",
             "context": f"Error: {str(e)}",
             "detected_objects": []
         }}
-
-
