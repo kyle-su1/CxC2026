@@ -68,7 +68,10 @@ const DashboardPage = () => {
                                 Input Source
                             </h3>
                             <div className="flex-1 flex flex-col">
-                                <ImageUploader onImageSelected={handleImageSelected} />
+                                <ImageUploader
+                                    onImageSelected={handleImageSelected}
+                                    overlays={analysisResult?.objects}
+                                />
 
                                 {imageFile && (
                                     <button
@@ -109,35 +112,48 @@ const DashboardPage = () => {
                                         <span className="text-sm text-green-400 font-medium">Analysis Complete</span>
                                     </div>
 
-                                    {/* Main Content */}
-                                    <div className="space-y-4">
-                                        <div>
-                                            <span className="text-xs text-gray-500 uppercase tracking-widest">Identified Item</span>
-                                            <h2 className="text-2xl font-semibold text-white mt-1">{analysisResult.item_name}</h2>
+                                    {/* Objects Detected */}
+                                    <div>
+                                        <span className="text-xs text-gray-500 uppercase tracking-widest block mb-3">Detected Objects ({analysisResult.objects?.length || 0})</span>
+                                        <div className="space-y-2">
+                                            {analysisResult.objects && analysisResult.objects.length > 0 ? (
+                                                analysisResult.objects.map((obj, idx) => (
+                                                    <div key={idx} className="p-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-white font-medium">{obj.name}</span>
+                                                            <span className="text-xs text-gray-400">{(obj.score * 100).toFixed(0)}% confidence</span>
+                                                        </div>
+                                                        {obj.openAiLabel && obj.openAiLabel !== obj.name && (
+                                                            <div className="mt-1 text-xs text-blue-300">🤖 {obj.openAiLabel}</div>
+                                                        )}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-500 italic text-sm">No objects detected in this image.</p>
+                                            )}
                                         </div>
+                                    </div>
 
-                                        <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                                            <p className="text-gray-300 leading-relaxed text-sm">{analysisResult.description}</p>
-                                        </div>
-
+                                    {/* Labels (if any) */}
+                                    {analysisResult.labels && analysisResult.labels.length > 0 && (
                                         <div>
-                                            <span className="text-xs text-gray-500 uppercase tracking-widest block mb-2">Detected Signals</span>
+                                            <span className="text-xs text-gray-500 uppercase tracking-widest block mb-2">Image Labels</span>
                                             <div className="flex flex-wrap gap-2">
-                                                {analysisResult.detected_keywords?.map((kw, i) => (
-                                                    <span key={i} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded text-xs text-gray-400 hover:text-white hover:border-white/20 transition-all cursor-default">
-                                                        {kw}
+                                                {analysisResult.labels.map((label, idx) => (
+                                                    <span key={idx} className="px-2.5 py-1 bg-purple-500/20 border border-purple-500/30 rounded text-xs text-purple-200">
+                                                        {label.description} ({(label.score * 100).toFixed(0)}%)
                                                     </span>
                                                 ))}
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* JSON Data Toggle */}
                                     <div className="pt-4 border-t border-white/5">
                                         <details className="group">
                                             <summary className="cursor-pointer text-xs text-gray-600 hover:text-gray-400 transition-colors list-none flex items-center gap-2">
                                                 <span className="group-open:rotate-90 transition-transform">▸</span>
-                                                View Raw Agent Data
+                                                View Raw Response Data
                                             </summary>
                                             <pre className="mt-3 text-[10px] text-gray-500 bg-black/50 p-4 rounded-lg overflow-x-auto font-mono">
                                                 {JSON.stringify(analysisResult, null, 2)}

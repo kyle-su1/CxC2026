@@ -37,13 +37,31 @@ app.post('/api/analyze', async (req, res) => {
             return res.status(400).json({ error: 'No image data provided' });
         }
 
-        // Robustly remove header
+        // 1. Process Image with Sharp
+        // Detect if there's a header and strip it
         let base64Data = imageBase64;
         if (imageBase64.includes('base64,')) {
             base64Data = imageBase64.split('base64,')[1];
         }
 
-        console.log(`Sending Full Image to OpenRouter (gpt-4o) for Detection & Labeling...`);
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Resize and convert to JPEG using sharp
+        console.log("Optimizing image with Sharp...");
+        const optimizedBuffer = await sharp(imageBuffer)
+            .resize({
+                width: 2048,
+                height: 2048,
+                fit: 'inside', // Maintain aspect ratio, do not exceed dimensions
+                withoutEnlargement: true // Do not upscale small images
+            })
+            .jpeg({ quality: 80 }) // standardized to JPEG, 80% quality
+            .toBuffer();
+
+        const optimizedBase64 = optimizedBuffer.toString('base64');
+        console.log(`Image optimized. Original size: ${Math.round(base64Data.length / 1024)}KB, Optimized: ${Math.round(optimizedBase64.length / 1024)}KB`);
+
+        console.log(`Sending Optimized Image to OpenRouter (gpt-4o) for Detection & Labeling...`);
 
         const systemPrompt = `
             You are an expert object detection and identification system.
@@ -56,13 +74,26 @@ app.post('/api/analyze', async (req, res) => {
                - GOOD: Brand + type (e.g., "DeWalt Cordless Drill", "WEN Band Saw")
                - FALLBACK: Descriptive name only if no branding visible (e.g., "Yellow Robotic Dog", "Red Fire Extinguisher")
             
-            2. "box": Bounding box as [top, left, bottom, right] where:
-               - ALL values are decimals from 0.0 to 1.0
-               - top=0.0 is image top, bottom=1.0 is image bottom
-               - left=0.0 is image left, right=1.0 is image right
-               - Example: [0.1, 0.2, 0.5, 0.6] means box from 10% down, 20% right, to 50% down, 60% right
+            2. "confidence": Your confidence in the detection (0.0 to 1.0):
+               - 0.95-1.0 = Very clear, unobstructed, well-lit object
+               - 0.85-0.94 = Clear but partially occluded or at angle
+               - 0.70-0.84 = Visible but small, distant, or unclear
+               - Below 0.70 = Uncertain identification
             
-            Return JSON: {"objects": [{"name": "...", "box": [top, left, bottom, right]}]}
+            3. "box": Bounding box in STANDARD CV FORMAT [y_min, x_min, y_max, x_max] where:
+               - ALL values are decimals from 0.0 to 1.0 (normalized coordinates)
+               - y_min = distance from TOP edge to TOP of box (0.0 = top of image)
+               - x_min = distance from LEFT edge to LEFT of box (0.0 = left of image)
+               - y_max = distance from TOP edge to BOTTOM of box (1.0 = bottom of image)
+               - x_max = distance from LEFT edge to RIGHT of box (1.0 = right of image)
+               
+               EXAMPLES:
+               - Object in top-left corner: [0.0, 0.0, 0.3, 0.3]
+               - Object in center: [0.4, 0.4, 0.6, 0.6]
+               - Object in bottom-right: [0.7, 0.7, 1.0, 1.0]
+               - Object spanning full width at top: [0.0, 0.0, 0.2, 1.0]
+            
+            Return ONLY valid JSON: {"objects": [{"name": "...", "confidence": 0.95, "box": [y_min, x_min, y_max, x_max]}]}
         `;
 
         const aiResponse = await openai.chat.completions.create({
@@ -76,7 +107,7 @@ app.post('/api/analyze', async (req, res) => {
                         {
                             type: "image_url",
                             image_url: {
-                                "url": `data:image/jpeg;base64,${base64Data}`,
+                                "url": `data:image/jpeg;base64,${optimizedBase64}`, // Always JPEG now
                                 "detail": "high"
                             },
                         },
@@ -118,7 +149,7 @@ app.post('/api/analyze', async (req, res) => {
 
                 return {
                     name: obj.name,
-                    score: 0.99, // OpenAI doesn't give confidence, assume high
+                    score: obj.confidence || 0.95, // Use GPT-4o's confidence, fallback to 0.95
                     openAiLabel: obj.name, // Use same name for the "robot" label
                     boundingPoly: {
                         normalizedVertices: [
@@ -146,7 +177,18 @@ app.post('/api/analyze', async (req, res) => {
 
     } catch (error) {
         console.error('API Error:', error);
-        res.status(500).json({ error: 'Failed to analyze image', details: error.message });
+
+        // Enhanced Error Logging for OpenRouter/OpenAI
+        if (error.response) {
+            console.error("Upstream Error Data:", error.response.data);
+            console.error("Upstream Error Status:", error.response.status);
+        }
+
+        res.status(500).json({
+            error: 'Failed to analyze image',
+            details: error.message,
+            upstreamError: error.response ? error.response.data : null
+        });
     }
 });
 
