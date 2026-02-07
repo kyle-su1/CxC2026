@@ -132,6 +132,53 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
             candidates = [item.model_dump() for item in result.items]
             print(f"   [Scout] Successfully extracted {len(candidates)} candidates via Gemini.")
 
+            # --- Vector Feedback Loop ---
+            # Save these candidates back to Snowflake so we remember them for next time
+            print("   [Scout] Feedback Loop: Upserting candidates to Snowflake...")
+            try:
+                from langchain_google_genai import GoogleGenerativeAIEmbeddings
+                from app.services.snowflake_vector import snowflake_vector_service
+                
+                # Initialize embedding model if not already (for the feedback loop)
+                embeddings_feedback = GoogleGenerativeAIEmbeddings(
+                    model="models/gemini-embedding-001", 
+                    google_api_key=settings.GOOGLE_API_KEY
+                )
+                
+                for cand in candidates:
+                    try:
+                        c_name = cand.get('name')
+                        c_desc = cand.get('reason', '') + " " + " ".join(cand.get('pros', []))
+                        
+                        # Generate ID deterministically from name
+                        import hashlib
+                        c_id = f"ext_{hashlib.md5(c_name.encode()).hexdigest()}"
+                        
+                        # Generate Vector
+                        text_to_embed = f"{c_name} - {c_desc}"
+                        vector = embeddings_feedback.embed_query(text_to_embed)
+                        
+                        # Prepare data
+                        p_data = {
+                            "id": c_id,
+                            "name": c_name,
+                            "description": c_desc,
+                            "price": 0.0, # We might not have price yet, let enrichment fill it or update later
+                            "image_url": "",
+                            "source_url": ""
+                        }
+                        
+                        # Insert
+                        snowflake_vector_service.insert_product(p_data, vector)
+                        print(f"       -> Saved {c_name} to Vector DB.")
+                        
+                    except Exception as inner_e:
+                        print(f"       -> Failed to save {cand.get('name')}: {inner_e}")
+                        
+            except Exception as e:
+                print(f"   [Scout] Feedback Loop Failed: {e}")
+            # ---------------------------
+
             # 5. Enrich with Real-Time Prices and Reviews (Node 2a logic for alternatives)
             print("   [Scout] Fetching prices and reviews for candidates...")
             
