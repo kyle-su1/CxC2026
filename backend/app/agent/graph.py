@@ -85,24 +85,14 @@ workflow.add_conditional_edges(
 def route_vision(state: AgentState):
     if state.get("detect_only"):
         return END
-    return ["research_node", "market_scout_node"]
+    # Sequential: Vision -> Research -> Market Scout
+    return "research_node"
 
 workflow.add_conditional_edges(
     "vision_node",
     route_vision,
     {
         "research_node": "research_node",
-        "market_scout_node": "market_scout_node",
-        END: END
-    }
-)
-
-workflow.add_conditional_edges(
-    "vision_node",
-    route_vision,
-    {
-        "research_node": "research_node",
-        "market_scout_node": "market_scout_node",
         END: END
     }
 )
