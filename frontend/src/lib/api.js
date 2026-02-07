@@ -61,3 +61,25 @@ export const identifyObject = async (imageBase64, boundingBox, token) => {
     }
 };
 
+/**
+ * Chat-based analysis for targeted object queries.
+ * User asks about a specific item → LLM finds bounding box → triggers analysis.
+ */
+export const chatAnalyze = async (imageBase64, userQuery, chatHistory, token) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/v1/agent/chat-analyze`, {
+            image_base64: imageBase64,
+            user_query: userQuery,
+            chat_history: chatHistory || []
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Chat Analyze API Error:", error);
+        throw error;
+    }
+};

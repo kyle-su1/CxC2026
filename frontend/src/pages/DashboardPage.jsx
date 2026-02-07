@@ -4,7 +4,8 @@ import ImageUploader from '../components/ImageUploader'
 import LogoutButton from '../components/LogoutButton'
 import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios';
-import { analyzeImage, identifyObject } from '../lib/api'
+import { analyzeImage, identifyObject, chatAnalyze } from '../lib/api'
+import ChatInterface from '../components/ChatInterface';
 import BoundingBoxOverlay from '../components/BoundingBoxOverlay';
 import ScanningOverlay from '../components/ScanningOverlay';
 import AgentStatusDisplay from '../components/AgentStatusDisplay';
@@ -24,6 +25,8 @@ const DashboardPage = () => {
     const [identifiedCache, setIdentifiedCache] = useState({}); // Cache Lens results by object index
     const [agentStep, setAgentStep] = useState(0);
     const [backendReady, setBackendReady] = useState(false);
+    const [isChatAnalyzing, setIsChatAnalyzing] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
 
     // Poll backend health
     useEffect(() => {
@@ -190,6 +193,65 @@ const DashboardPage = () => {
         }
     };
 
+    // Handle chat-based targeted analysis
+    const handleChatAnalyze = async (userQuery) => {
+        if (!imageBase64 || !userQuery.trim()) return;
+
+        setIsChatAnalyzing(true);
+
+        // Add user message to chat history
+        const newMessages = [...chatMessages, { role: 'user', content: userQuery }];
+        setChatMessages(newMessages);
+
+        // Add thinking placeholder
+        setChatMessages([...newMessages, { role: 'assistant', content: null, isThinking: true }]);
+
+        try {
+            const token = await getAccessTokenSilently();
+            const result = await chatAnalyze(imageBase64, userQuery, chatMessages, token);
+
+            // Update bounding boxes if targeted object found
+            if (result.targeted_bounding_box) {
+                setAnalysisResult(prev => ({
+                    ...prev,
+                    active_product: {
+                        ...(prev?.active_product || {}),
+                        detected_objects: [{
+                            name: result.targeted_object_name || 'Target',
+                            bounding_box: result.targeted_bounding_box,
+                            confidence: result.confidence || 0.9,
+                            lens_status: 'pending'
+                        }]
+                    }
+                }));
+            }
+
+            // Replace thinking with AI response
+            setChatMessages([...newMessages, {
+                role: 'assistant',
+                content: result.chat_response || 'I found the item. Click the highlighted area for details.',
+                boundingBox: result.targeted_bounding_box
+            }]);
+
+            // If full analysis available, update results
+            if (result.analysis) {
+                setAnalysisResult(prev => ({
+                    ...prev,
+                    ...result.analysis
+                }));
+            }
+
+        } catch (error) {
+            console.error("Chat analyze failed:", error);
+            setChatMessages([...newMessages, {
+                role: 'assistant',
+                content: 'Sorry, I encountered an error analyzing your request. Please try again.'
+            }]);
+        } finally {
+            setIsChatAnalyzing(false);
+        }
+    };
+
     if (isLoading) return <div className="text-white">Loading...</div>;
 
     return (
@@ -310,6 +372,18 @@ const DashboardPage = () => {
                                             </>
                                         )}
                                     </button>
+                                )}
+
+                                {/* Chat Interface - appears after image is uploaded */}
+                                {imageBase64 && (
+                                    <ChatInterface
+                                        imageBase64={imageBase64}
+                                        onAnalysisStart={handleChatAnalyze}
+                                        isAnalyzing={isChatAnalyzing}
+                                        disabled={!backendReady}
+                                        messages={chatMessages}
+                                        setMessages={setChatMessages}
+                                    />
                                 )}
                             </div>
                         </div>
