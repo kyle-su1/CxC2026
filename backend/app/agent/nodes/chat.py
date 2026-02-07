@@ -17,6 +17,11 @@ async def node_chat(state: AgentState) -> Dict[str, Any]:
     """
     Node 6: Chat
     Handles general conversation and preference updates.
+    
+    Routes based on router_decision:
+    - chat: Respond and END
+    - re_search: Extract visual prefs → Market Scout (Node 2)
+    - re_analysis: Extract budget prefs → Analysis (Node 4)
     """
     logger.info("--- Executing Chat Node ---")
     
@@ -25,99 +30,161 @@ async def node_chat(state: AgentState) -> Dict[str, Any]:
     chat_history = state.get("chat_history", [])
     session_id = state.get("session_id")
     
+    # Initialize return values
+    loop_step = "end"
+    new_prefs = {}
+    search_criteria = {}
+    
     # 1. Initialize LLM
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
-        temperature=0.7,
+        temperature=0.3,
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
 
-    # 2. Handle Preference Updates
-    if router_decision == "update_preferences":
-        logger.info("CHAT: Updating preferences based on user input")
+    # 2. Handle Re-Analysis (Budget/Price preferences → Node 4)
+    if router_decision == "re_analysis":
+        logger.info("CHAT: Extracting budget preferences for re-analysis")
         
-        # Extract preferences using LLM
         extraction_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a Preference Extractor. Analyze the user's message and extract preferences into a JSON object.
-            
-            Supported keys:
-            - price_sensitivity (0.0 to 1.0, 1.0 = highly sensitive/wants cheap)
-            - quality (0.0 to 1.0)
-            - eco_friendly (0.0 to 1.0)
-            - brand_reputation (0.0 to 1.0)
-            
-            Example: "I hate red, and I want something cheap."
-            Output: {"price_sensitivity": 0.9} (Note: color prefs are handled elsewhere, here we focus on weights. If color is mentioned, ignore for now or add to metadata if supported.)
-            
-            Return ONLY the JSON.
-            """),
+            ("system", """You are a Budget Preference Extractor. Analyze the user's message and extract budget-related preferences.
+
+Return a JSON object with these possible keys:
+- max_budget: number (if user mentions a dollar amount, e.g., "$120" → 120)
+- price_sensitivity: float 0.0-1.0 (0.9 if user wants cheap, 0.1 if price doesn't matter)
+- prefer_cheaper: boolean (true if user explicitly asks for cheaper options)
+
+Examples:
+- "I only have $120" → {{"max_budget": 120, "price_sensitivity": 0.9}}
+- "Find cheaper ones" → {{"price_sensitivity": 0.95, "prefer_cheaper": true}}
+- "My budget is tight" → {{"price_sensitivity": 0.85}}
+- "Show me the most affordable" → {{"price_sensitivity": 1.0, "prefer_cheaper": true}}
+
+Return ONLY valid JSON, no markdown."""),
             ("human", "{user_query}")
         ])
         
         chain = extraction_prompt | llm | StrOutputParser()
         try:
             result = await chain.ainvoke({"user_query": user_query})
-            # Clean up potential markdown formatting
             cleaned_result = result.strip()
             if cleaned_result.startswith("```"):
-                # Remove first line (```json or ```) and last line (```)
                 lines = cleaned_result.split("\n")
                 if len(lines) >= 3:
                     cleaned_result = "\n".join(lines[1:-1])
             
             new_prefs = json.loads(cleaned_result)
+            logger.info(f"CHAT: Extracted budget prefs: {new_prefs}")
+            loop_step = "analysis_node"
             
-            # Update DB
-            # We need user_id from somewhere. In a real app, it's in the session or context.
-            # For now, we'll try to find a user_id from the session if we had it, or just Mock it/Log it.
-            # Assuming we can get a DB session:
+        except Exception as e:
+            logger.error(f"CHAT: Failed to extract budget prefs: {e}")
+            new_prefs = {"price_sensitivity": 0.8}  # Default to price-conscious
+            loop_step = "analysis_node"
+
+    # 3. Handle Re-Search (Visual/Attribute preferences OR strict budget → Node 2)
+    elif router_decision == "re_search":
+        logger.info("CHAT: Extracting visual preferences for re-search")
+        
+        extraction_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a Preference Extractor for a Shopping Assistant. Analyze the user's message and extract ALL relevant preferences.
+
+Return a JSON object with these possible keys:
+- exclude_colors: list of colors to avoid (e.g., ["red", "orange"])
+- prefer_colors: list of preferred colors (e.g., ["blue", "black"])
+- prefer_brands: list of preferred brands
+- exclude_brands: list of brands to avoid
+- style_keywords: list of style descriptors (e.g., ["modern", "minimalist"])
+- max_budget: number (if user mentions specific dollar amount, e.g., "$120" -> 120)
+
+Examples:
+- "I don't like red" -> {{"exclude_colors": ["red"]}}
+- "Show me blue ones" -> {{"prefer_colors": ["blue"]}}
+- "I prefer Nike" -> {{"prefer_brands": ["Nike"]}}
+- "I only have $120" -> {{"max_budget": 120}}
+- "Show me blue ones under $100" -> {{"prefer_colors": ["blue"], "max_budget": 100}}
+
+Return ONLY valid JSON, no markdown."""),
+            ("human", "{user_query}")
+        ])
+        
+        chain = extraction_prompt | llm | StrOutputParser()
+        try:
+            result = await chain.ainvoke({"user_query": user_query})
+            cleaned_result = result.strip()
+            if cleaned_result.startswith("```"):
+                lines = cleaned_result.split("\n")
+                if len(lines) >= 3:
+                    cleaned_result = "\n".join(lines[1:-1])
+            
+            search_criteria = json.loads(cleaned_result)
+            logger.info(f"CHAT: Extracted search prefs: {search_criteria}")
+            
+            # If budget was extracted, also save it to new_prefs
+            if search_criteria.get('max_budget'):
+                new_prefs['max_budget'] = search_criteria['max_budget']
+                new_prefs['price_sensitivity'] = 0.9  # User specified budget, so price-sensitive
+            
+            loop_step = "market_scout_node"
+            
+        except Exception as e:
+            logger.error(f"CHAT: Failed to extract search prefs: {e}")
+            loop_step = "market_scout_node"  # Still re-search, just without specific criteria
+
+    # 4. Update Database with preferences (if any)
+    if new_prefs:
+        try:
             with SessionLocal() as db:
-                # Mock User ID 1 for MVP or try to get from state/session
-                # In the `session` model, we have `user_id`.
-                # We need to fetch the session object to get the user_id.
                 from app.models.session import Session as SessionModel
                 from app.models.user import User
                 
+                user_id = 1  # MVP hardcoded
                 if session_id:
                     session_obj = db.query(SessionModel).filter(SessionModel.id == session_id).first()
                     if session_obj and session_obj.user_id:
-                        user = db.query(User).filter(User.id == session_obj.user_id).first()
-                        if user:
-                            current_prefs = user.preferences or {}
-                            current_prefs.update(new_prefs)
-                            user.preferences = current_prefs
-                            db.commit()
-                            logger.info(f"CHAT: Updated preferences for user {user.id}: {new_prefs}")
-                            
-                            # Merge into current state
-                            state_prefs = state.get("user_preferences", {})
-                            state_prefs.update(new_prefs)
-                            state["user_preferences"] = state_prefs
-            
+                        user_id = session_obj.user_id
+                
+                user = db.query(User).filter(User.id == user_id).first()
+                if user:
+                    current_prefs = user.preferences or {}
+                    current_prefs.update(new_prefs)
+                    user.preferences = current_prefs
+                    db.commit()
+                    logger.info(f"CHAT: Updated DB preferences for user {user_id}: {new_prefs}")
+                    
         except Exception as e:
-            logger.error(f"CHAT: Failed to update preferences: {e}")
+            logger.error(f"CHAT: Failed to update DB preferences: {e}")
 
-    # 3. Generate Response
+    # 5. Generate Response
     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-    # Context could come from analysis_object if available
     analysis = state.get("analysis_object")
     
-    system_text = """You are a helpful Shopping Assistant. 
-    You have access to the user's current analysis session.
-    
-    If the user just updated their preferences, confirm it.
-    If the user is asking a question about the product, answer it based on the analysis.
-    If the user is just chatting, be friendly.
-    
-    Keep responses concise and helpful.
-    """
+    # Build context-aware system prompt
+    if router_decision == "re_analysis":
+        system_text = f"""You are a helpful Shopping Assistant. The user just updated their budget preferences.
+        
+Extracted preferences: {new_prefs}
+
+Confirm that you understood their budget constraint and let them know you're re-analyzing the products with their new preferences. Be concise and helpful."""
+    elif router_decision == "re_search":
+        system_text = f"""You are a helpful Shopping Assistant. The user wants different products based on their preferences.
+        
+Extracted preferences: {search_criteria}
+
+Confirm that you understood their preferences and let them know you're searching for new alternatives. Be concise and helpful."""
+    else:
+        system_text = """You are a helpful Shopping Assistant. 
+You have access to the user's current analysis session.
+
+If the user is asking a question about the product, answer it based on the analysis.
+If the user is just chatting, be friendly.
+
+Keep responses concise and helpful."""
     
     if analysis:
-        # We append this directly. Even if it has {}, it won't be templated if we use SystemMessage directly.
-        system_text += f"\n\nCurrent Analysis Context: {str(analysis)}"
+        system_text += f"\n\nCurrent Analysis Context: {str(analysis)[:500]}"  # Limit context size
     
-    # helper to map role to message class
     def map_message(role, content):
         if role == "user":
             return HumanMessage(content=content)
@@ -127,23 +194,22 @@ async def node_chat(state: AgentState) -> Dict[str, Any]:
             return SystemMessage(content=content)
         return HumanMessage(content=content)
 
-    # Build messages list
     messages = [SystemMessage(content=system_text)]
-    
-    # Add recent history (last 5 messages)
     for msg in chat_history[-5:]:
         messages.append(map_message(msg.get("role"), msg.get("content")))
-    
     messages.append(HumanMessage(content=user_query))
     
-    # Invoke LLM directly with messages
-    # We use StrOutputParser to get string response
     chain = llm | StrOutputParser()
     response = await chain.ainvoke(messages)
+    
+    # 6. Merge preferences into state for downstream nodes
+    state_prefs = state.get("user_preferences", {})
+    state_prefs.update(new_prefs)
     
     return {
         "chat_history": chat_history + [{"role": "user", "content": user_query}, {"role": "assistant", "content": response}],
         "final_recommendation": {"chat_response": response},
-        # Determine loop step
-        "loop_step": "analysis_node" if router_decision == "update_preferences" else "end"
+        "user_preferences": state_prefs,
+        "search_criteria": search_criteria,  # For Market Scout
+        "loop_step": loop_step
     }

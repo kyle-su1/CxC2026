@@ -4,8 +4,8 @@ import sys
 from unittest.mock import MagicMock, patch
 from dotenv import load_dotenv
 
-# Load env vars
-load_dotenv()
+# Load env vars from backend/.env
+load_dotenv(os.path.join(os.getcwd(), 'backend', '.env'))
 
 # Check for API Key
 if not os.getenv("GOOGLE_API_KEY"):
@@ -34,14 +34,26 @@ async def test_nodes_isolation():
     state_chat = {"user_query": "Hello", "chat_history": [], "image_base64": None}
     res_chat = await node_router(state_chat)
     print(f"Input: 'Hello' -> Decision: {res_chat.get('router_decision')}")
+    assert res_chat.get('router_decision') == 'chat', "❌ Expected 'chat'"
+    print("✅ Passed")
     
     state_pref = {"user_query": "I hate red", "chat_history": [{"role": "assistant", "content": "hi"}], "image_base64": None}
     res_pref = await node_router(state_pref)
     print(f"Input: 'I hate red' -> Decision: {res_pref.get('router_decision')}")
+    assert res_pref.get('router_decision') == 're_search', "❌ Expected 're_search'"
+    print("✅ Passed")
     
     state_search = {"user_query": "Find cheaper ones", "chat_history": [{"role": "assistant", "content": "hi"}], "image_base64": None}
     res_search = await node_router(state_search)
     print(f"Input: 'Find cheaper ones' -> Decision: {res_search.get('router_decision')}")
+    assert res_search.get('router_decision') == 're_analysis', "❌ Expected 're_analysis'"
+    print("✅ Passed")
+    
+    state_budget = {"user_query": "I only have $120", "chat_history": [{"role": "assistant", "content": "hi"}], "image_base64": None}
+    res_budget = await node_router(state_budget)
+    print(f"Input: 'I only have $120' -> Decision: {res_budget.get('router_decision')}")
+    assert res_budget.get('router_decision') == 're_analysis', "❌ Expected 're_analysis'"
+    print("✅ Passed")
     
     # Test 2: Chat Node Logic
     print("\nTest 2: Chat Node Response")
