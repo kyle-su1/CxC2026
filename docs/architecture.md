@@ -139,8 +139,6 @@ This phase runs two parallel agents to gather deep data.
 
 ---
 
-<<<<<<< Updated upstream
-=======
 ## 4. Frontend Integration
 ### **Layout Strategy**
 *   **Left Panel**: **Input & Interaction**.
@@ -184,7 +182,6 @@ To ensure the analysis runs within strict time limits:
 *   Ensure PostgreSQL container is healthy (`docker-compose ps`).
 *   Check credentials in `micros/auth/app/core/config.py` (default: `user`/`password`).
 
->>>>>>> Stashed changes
 ---
 
 ## 9. Model Summary
