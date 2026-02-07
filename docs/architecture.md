@@ -101,12 +101,16 @@ This phase runs two parallel agents to gather deep data.
 ### **Node 2b: Market Scout (The "Explorer")**
 *   **Input**: Structured Product Query + User Preferences.
 *   **Goal**: Find relevant *alternatives* based on the user's needs.
+*   **Tools**:
+    *   **Tavily Search**: For live web results.
+    *   **Snowflake Vector Search**: For internal product catalog similarity (Cosine Similarity).
 *   **Model**: **Gemini 2.0 Flash** (`gemini-2.0-flash`) for fast candidate extraction.
 
 ### **Node 3: The Skeptic (Critique & Verification)**
 *   **Input**: Raw product data (Main Item) + Alternative Candidates (Scout).
-*   **Agent**: **Skeptic Agent** (`gemini-1.5-pro`).
-    > **Model Selection**: Uses `gemini-1.5-pro` for its superior reasoning capabilities in detecting fake reviews, analyzing sentiment nuance, and identifying subtle manipulation patterns.
+*   **Agent**: **Skeptic Agent** (`gemini-2.0-flash`).
+    > **Model Selection**: Uses `gemini-2.0-flash` (via `MODEL_REASONING`) for fast, cost-effective reasoning.
+    > **Note**: Originally planned for Snowflake Cortex, but migrated to Gemini for lower latency.
 *   **Caching**: Review analysis results are cached in Redis keyed by `product_name + review_hash` (TTL: 30 minutes).
 *   **Responsibilities**:
     1.  **Fake Review Detection**: Analyze patterns in reviews for the main product.
@@ -117,7 +121,7 @@ This phase runs two parallel agents to gather deep data.
     - `sentiment_score` (-1 to 1): Weighted sentiment.
     - `red_flags`: List of suspicious patterns detected.
     - `summary`, `pros`, `cons`, `verdict`: Human-readable analysis.
-*   **Implementation**: [`backend/app/agent/skeptic.py`](backend/app/agent/skeptic.py)
+*   **Implementation**: [`backend/app/agent/nodes/critique.py`](backend/app/agent/nodes/critique.py)
 
 ### **Node 4: Analysis & Synthesis (The "Brain")**
 *   **Input**: Product Data + Contextual Scout Data + Risk Report.
@@ -316,12 +320,12 @@ The final payload sent to the frontend.
 
 ## 6. Database Strategy
 
-**Selected Path**: PostgreSQL (containerized) for all data.
+**Selected Path**: Hybrid (PostgreSQL + Snowflake).
 
-*   **Users & Auth**: User profiles, preferences, session data
-*   **Search History**: Past queries and recommendations
-*   **Sessions**: Active chat sessions with state checkpoints
-*   **Future**: Can add pgvector for vector search if needed
+*   **Users & Auth**: PostgreSQL (User profiles, preferences, session data).
+*   **Product Catalog & Vectors**: Snowflake (Schema: `CXC_APP.PUBLIC.PRODUCTS`).
+    *   **Vector Search**: Uses `VECTOR(FLOAT, 768)` and `VECTOR_COSINE_SIMILARITY`.
+    *   **Purpose**: Enabling scalable "Check Internal Database" lookups for the Agent.
 
 ---
 
