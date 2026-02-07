@@ -142,7 +142,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                 print("   [Scout] Checking Snowflake Vector DB for known alternatives...")
                 
                 embeddings = GoogleGenerativeAIEmbeddings(
-                    model="models/embedding-001", 
+                    model="models/gemini-embedding-001", 
                     google_api_key=settings.GOOGLE_API_KEY
                 )
                 query_vector = embeddings.embed_query(product_name)
