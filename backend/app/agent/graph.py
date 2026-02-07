@@ -32,28 +32,39 @@ workflow.set_entry_point("router_node")
 
 # Router Logic
 def route_intent(state: AgentState):
+    """
+    Routes based on router decision:
+    - vision_search → Vision Node (full pipeline)
+    - chat → Chat Node (respond only)
+    - re_search → Chat Node (extracts prefs, then → Market Scout)
+    - re_analysis → Chat Node (extracts prefs, then → Analysis)
+    """
     decision = state.get("router_decision")
     if decision == "vision_search":
         return "vision_node"
-    elif decision == "chat" or decision == "update_preferences":
-        return "chat_node"
-    elif decision == "market_scout_search":
-        return "market_scout_node"
-    return "chat_node" # Default fallback
+    elif decision in ["chat", "re_search", "re_analysis"]:
+        return "chat_node"  # Chat node handles all conversation types
+    return "chat_node"  # Default fallback
 
 workflow.add_conditional_edges(
     "router_node",
     route_intent,
     {
         "vision_node": "vision_node",
-        "chat_node": "chat_node",
-        "market_scout_node": "market_scout_node"
+        "chat_node": "chat_node"
     }
 )
 
 # Chat Node Logic (Feedback Loop)
+# Routes to downstream nodes based on loop_step set by chat node
 def route_chat_loop(state: AgentState):
-    loop = state.get("loop_step")
+    """
+    After chat node processes the message, route based on loop_step:
+    - analysis_node: Re-analyze with new budget preferences
+    - market_scout_node: Re-search with new visual preferences  
+    - end: Just respond, no further processing
+    """
+    loop = state.get("loop_step", "end")
     if loop == "analysis_node":
         return "analysis_node"
     elif loop == "market_scout_node":

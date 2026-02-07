@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 async def node_router(state: AgentState) -> Dict[str, Any]:
     """
     Classifies the user's intent to route to the appropriate node.
+    
+    Routes:
+    - vision_search: New image → Node 1 (Vision)
+    - chat: General conversation → End (respond only)
+    - re_search: Visual/attribute prefs (color, style) → Node 2 (Market Scout)
+    - re_analysis: Budget/price prefs (cheaper, $X) → Node 4 (Analysis)
     """
     logger.info("ROUTER: Determining intent...")
     
@@ -30,14 +36,29 @@ async def node_router(state: AgentState) -> Dict[str, Any]:
         google_api_key=os.getenv("GOOGLE_API_KEY")
     )
     
-    system_prompt = """You are the Router for a Shopping Assistant. Classify the user's latest message into one of these categories:
+    system_prompt = """You are the Router for a Shopping Assistant. Classify the user's latest message into ONE category:
 
-    1. 'vision_search': User uploaded an image or wants to analyze a product in an image (if image is present).
-    2. 'chat': General conversation, questions about the product, or small talk.
-    3. 'update_preferences': User explicitly states a preference (e.g., "I hate red", "I prefer Nike", "My budget is $100").
-    4. 'market_scout_search': User wants to find DIFFERENT products, alternatives, or modify the search filters (e.g., "Find cheaper ones", "Show me blue ones instead").
+    1. 'vision_search': User uploaded an image or wants to analyze a NEW product.
+    2. 'chat': General conversation, questions about the current product, or small talk (e.g., "Hello", "Thanks", "Tell me more").
+    3. 're_search': User wants DIFFERENT products based on visual preferences OR has a STRICT BUDGET. Examples:
+       - "I don't like red" (color preference)
+       - "Show me blue ones" 
+       - "I prefer Nike brand"
+       - "Something more modern looking"
+       - "I only have $120" (STRICT budget - may need new products)
+       - "My budget is $50" (STRICT budget)
+    4. 're_analysis': User wants to RE-SCORE existing products based on GENERAL price preference (no specific dollar amount). Examples:
+       - "Find cheaper ones"
+       - "Show me the most affordable option"
+       - "Price is important to me"
+       - "My budget is tight" (vague, not specific)
     
-    Output ONLY the category name.
+    IMPORTANT: 
+    - If user mentions COLOR, STYLE, BRAND, or LOOK -> 're_search'
+    - If user specifies a SPECIFIC DOLLAR AMOUNT ($50, $120, etc.) -> 're_search' (may need new products)
+    - If user says CHEAPER, AFFORDABLE, BUDGET-FRIENDLY (no specific amount) -> 're_analysis' (re-rank existing)
+    
+    Output ONLY the category name (one word).
     """
     
     human_prompt = f"""
@@ -58,7 +79,7 @@ async def node_router(state: AgentState) -> Dict[str, Any]:
         decision = decision.strip().lower()
         
         # Fallback for safety
-        valid_decisions = ["vision_search", "chat", "update_preferences", "market_scout_search"]
+        valid_decisions = ["vision_search", "chat", "re_search", "re_analysis"]
         if decision not in valid_decisions:
             logger.warning(f"ROUTER: Invalid decision '{decision}', defaulting to 'chat'")
             decision = "chat"

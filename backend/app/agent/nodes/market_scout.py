@@ -27,6 +27,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     product_query_data = state.get('product_query', {})
     product_name = product_query_data.get('canonical_name') or product_query_data.get('product_name', '')
     user_prefs = state.get('user_preferences', {})
+    search_criteria = state.get('search_criteria', {})  # From Chat Node (colors, brands, etc.)
     
     if not product_name or "Error" in product_name:
         return {"market_scout_data": {"error": "No valid product to scout"}}
@@ -35,15 +36,41 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     # Default strategy: "Balanced" (find similar quality)
     search_modifiers = ["best alternative", "competitor"]
     
-    # Simple heuristic for demo (replace with LLM logic later)
+    # Adjust based on user preferences
     if user_prefs.get('price_sensitivity', 0) > 0.7:
         search_modifiers = ["cheaper alternative", "best budget alternative"]
     elif user_prefs.get('quality', 0) > 0.7:
         search_modifiers = ["premium alternative", "better than"]
     
-    # 2. Construct Queries
+    # 1b. Incorporate search_criteria from Chat Node (Feedback Loop)
+    # These come from user requests like "I hate red" or "show me Nike"
+    color_filter = ""
+    brand_filter = ""
+    style_filter = ""
+    
+    if search_criteria:
+        print(f"   [Scout] Applying search_criteria from Chat: {search_criteria}")
+        
+        # Handle color exclusions
+        exclude_colors = search_criteria.get('exclude_colors', [])
+        prefer_colors = search_criteria.get('prefer_colors', [])
+        if prefer_colors:
+            color_filter = " " + " ".join(prefer_colors)
+        
+        # Handle brand preferences
+        prefer_brands = search_criteria.get('prefer_brands', [])
+        exclude_brands = search_criteria.get('exclude_brands', [])
+        if prefer_brands:
+            brand_filter = " " + " ".join(prefer_brands)
+        
+        # Handle style keywords
+        style_keywords = search_criteria.get('style_keywords', [])
+        if style_keywords:
+            style_filter = " " + " ".join(style_keywords)
+
+    # 2. Construct Queries with filters applied
     queries = [
-        f"{modifier} to {product_name} 2026 reddit" 
+        f"{modifier} to {product_name}{color_filter}{brand_filter}{style_filter} 2026 reddit" 
         for modifier in search_modifiers
     ]
     # Add a general one
@@ -198,6 +225,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
             
             # --- Snowflake Vector Search Integration ---
             # Checks for similar products already in our database
+            # Uses search_criteria to create a more targeted embedding query
             try:
                 from langchain_google_genai import GoogleGenerativeAIEmbeddings
                 from app.services.snowflake_vector import snowflake_vector_service
@@ -208,7 +236,22 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                     model="models/gemini-embedding-001", 
                     google_api_key=settings.GOOGLE_API_KEY
                 )
-                query_vector = embeddings.embed_query(product_name)
+                
+                # Build enhanced query with search_criteria from Chat Node
+                enhanced_query = product_name
+                if search_criteria:
+                    criteria_parts = []
+                    if search_criteria.get('prefer_colors'):
+                        criteria_parts.append(" ".join(search_criteria['prefer_colors']))
+                    if search_criteria.get('prefer_brands'):
+                        criteria_parts.append(" ".join(search_criteria['prefer_brands']))
+                    if search_criteria.get('style_keywords'):
+                        criteria_parts.append(" ".join(search_criteria['style_keywords']))
+                    if criteria_parts:
+                        enhanced_query = f"{product_name} {' '.join(criteria_parts)}"
+                        print(f"   [Scout] Enhanced vector query: '{enhanced_query}'")
+                
+                query_vector = embeddings.embed_query(enhanced_query)
                 
                 # Search Snowflake
                 vector_results = snowflake_vector_service.search_similar_products(query_vector, limit=3)
@@ -216,6 +259,19 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                 if vector_results:
                     print(f"   [Scout] Found {len(vector_results)} matches in Snowflake.")
                     for res in vector_results:
+                        # Filter out results that match excluded colors/brands
+                        res_name = res.get('name', '').lower()
+                        exclude_colors = search_criteria.get('exclude_colors', [])
+                        exclude_brands = search_criteria.get('exclude_brands', [])
+                        
+                        # Skip if product matches exclusions
+                        if any(color.lower() in res_name for color in exclude_colors):
+                            print(f"       -> Skipping {res.get('name')} (excluded color)")
+                            continue
+                        if any(brand.lower() in res_name for brand in exclude_brands):
+                            print(f"       -> Skipping {res.get('name')} (excluded brand)")
+                            continue
+                        
                         # Convert to candidate format
                         cand = {
                             "name": res.get('name'),
