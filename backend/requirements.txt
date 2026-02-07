@@ -11,4 +11,5 @@ openai
 pillow
 pillow-heif
 snowflake-snowpark-python
+snowflake-snowpark-python
 snowflake-connector-python
