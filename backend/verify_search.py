@@ -6,12 +6,12 @@ def verify_search():
     print("Verifying Snowflake Vector Search...")
     
     # 1. Embed query
-    print("Embedding query: 'noise cancelling headphones'...")
+    print("Embedding query: 'ergonomic office chair'...")
     embeddings_model = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
         google_api_key=settings.GOOGLE_API_KEY
     )
-    query_vector = embeddings_model.embed_query("noise cancelling headphones")
+    query_vector = embeddings_model.embed_query("ergonomic office chair")
     
     # 2. Search
     print("Searching database...")

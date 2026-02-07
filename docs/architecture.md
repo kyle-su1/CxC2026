@@ -109,9 +109,10 @@ This phase runs two parallel agents to gather deep data.
 *   **Input**: Structured Product Query + User Preferences.
 *   **Goal**: Find relevant *alternatives* based on the user's needs.
 *   **Tools**:
-    *   **Tavily Search**: For live web results.
-    *   **Snowflake Vector Search**: For internal product catalog similarity (Cosine Similarity).
+    *   **Tavily Search**: For live web results (External Discovery).
+    *   **Snowflake Vector Search**: For internal product catalog similarity (Internal Discovery).
 *   **Model**: **Gemini 2.0 Flash** (`gemini-2.0-flash`) for fast candidate extraction.
+*   **Strategy**: Hybrid Discovery (Internal + External Fusion).
 
 ### **Node 3: The Skeptic (Critique & Verification)**
 *   **Input**: Raw product data (Main Item) + Alternative Candidates (Scout).
@@ -218,8 +219,9 @@ The final payload sent to the frontend includes the active product data for visu
 
 *   **Users & Auth**: PostgreSQL (User profiles, preferences, session data).
 *   **Product Catalog & Vectors**: Snowflake (Schema: `CXC_APP.PUBLIC.PRODUCTS`).
-    *   **Vector Search**: Uses `VECTOR(FLOAT, 768)` and `VECTOR_COSINE_SIMILARITY`.
+    *   **Vector Search**: Uses `VECTOR(FLOAT, 3072)` (Gemini-001) and `VECTOR_COSINE_SIMILARITY`.
     *   **Purpose**: Enabling scalable "Check Internal Database" lookups for the Agent.
+    *   **Embedding Model**: `models/gemini-embedding-001`.
 
 ---
 
