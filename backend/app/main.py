@@ -29,8 +29,10 @@ from app.api.api import api_router
 # Import the agent graph
 try:
     from app.agent.graph import agent_app
-except ImportError:
-    print("Warning: Could not import agent_app from app.agent.graph")
+except Exception as e:
+    import traceback
+    print(f"CRITICAL ERROR: Could not import agent_app: {e}")
+    traceback.print_exc()
     agent_app = None
 
 @app.on_event("startup")

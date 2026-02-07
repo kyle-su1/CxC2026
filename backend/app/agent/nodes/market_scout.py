@@ -14,9 +14,18 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     4. Parse results to identify 2-3 candidate product names.
     """
     print("--- 2b. Executing Market Scout Node (The Explorer) ---")
+    log_file = "/app/debug_output.txt"
+    def log_debug(message):
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"{str(message)}\n")
+        except Exception:
+            pass
+
+    log_debug("--- 2b. Executing Market Scout Node (The Explorer) ---")
     
     product_query_data = state.get('product_query', {})
-    product_name = product_query_data.get('product_name', '')
+    product_name = product_query_data.get('canonical_name') or product_query_data.get('product_name', '')
     user_prefs = state.get('user_preferences', {})
     
     if not product_name or "Error" in product_name:
@@ -170,6 +179,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
         # Fallback: just return empty candidates
         pass
 
+    log_debug("Market Scout Node Completed")
     return {
         "market_scout_data": {
             "strategy": search_modifiers[0],

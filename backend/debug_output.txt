@@ -1,0 +1,354 @@
+--- 1. Executing Vision Node (The Eye) ---
+User Query: What is this item?
+Image Data Length: 1364754
+Image successfully decoded from base64.
+Sending request to Gemini model...
+Gemini Response: {
+  "product_name": "Yellow robot dog",
+  "bounding_box": [
+    747,
+    255,
+    990,
+    615
+  ],
+  "context": null,
+  "ambiguity_resolved": true
+}
+--- 2. Executing Discovery Node (The Runner) ---
+--- 2b. Executing Market Scout Node (The Explorer) ---
+Researching Product: Yellow robot dog
+Starting Tavily search...
+Tavily found 15 reviews
+Starting SerpAPI search...
+SerpAPI found 40 offers
+Discovery Node Completed
+Market Scout Node Completed
+--- 3. Executing Critique Node (The Skeptic) ---
+Critique Output: {'fake_review_likelihood': 'High. Multiple sources indicate the presence of paid or fake reviews, specifically mentioning the "Wuffy Robot Puppy" as a scam and pointing out discrepancies between advertised and actual products received. The Instagram reel showing a disappointing product further supports this.', 'price_integrity': "Markup. The price range for these robot dogs is extremely wide, from under $20 CAD to over $65,000 CAD. This suggests that many of the higher-priced offers are significant markups, particularly those claiming 'ultra realistic AI' features. The presence of multiple listings on platforms like eBay and Walmart.ca at vastly different prices for seemingly similar items should ring alarm bells.", 'hidden_flaws': ["The 'realistic' design may be misleading, with some models looking cheap or unrealistic.", 'Some robot dogs are made of plastic, which may not be durable or appealing to all consumers.', 'There is a risk of receiving a product that does not match the advertised description.', "The term 'AI' may be used loosely, and the robot dog's intelligence or capabilities may be limited.", 'Some models may have minor scuffs or cosmetic damage, even when advertised as being in excellent condition.', 'The product may not be suitable for all children, as some sources express concern about the emotional impact of replacing real pets with robotic ones.']}
+Critique Node Completed
+--- 4. Executing Analysis Node (The Brain) ---
+Scoring 4 candidates...
+--- 3. Executing Skeptic Node (The Critic) for Main Product ---
+--- 3. Executing Skeptic Node (The Critic) for Tombot ---
+--- 3. Executing Skeptic Node (The Critic) for Aibo ---
+--- 3. Executing Skeptic Node (The Critic) for Loona Robot ---
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Analysis Node Completed
+--- 5. Executing Response Node (The Speaker) ---
+Response Node Payload: {'outcome': 'highly_recommended', 'identified_product': 'Tombot', 'summary': "Based on your preferences, the Tombot stands out as a great choice, achieving a score of 71.9! It's designed to provide emotional support, especially for seniors, which aligns well with a strong preference for both quality and reasonable pricing. While other options like the Loona Robot offer highly interactive experiences, the Tombot's focus on emotional support and its favorable price score make it a top recommendation for you. If emotional support is a key factor, the Tombot is an excellent pick!", 'price_analysis': {'price_score': 0.958999603397705, 'weighted_price': 0.4794998016988525}, 'community_sentiment': {'trust_score': 4.5, 'sentiment_score': 0.6}, 'alternatives': [{'name': 'Tombot', 'score': 71.9, 'reason': 'Provides emotional support, especially for seniors.'}, {'name': 'Loona Robot', 'score': 60.5, 'reason': 'Mimics the actions of a dog and is highly interactive.'}, {'name': 'Aibo', 'score': 37.9, 'reason': 'AI-driven dog with lifelike behavior.'}, {'name': 'Main Product', 'score': 35.7, 'reason': 'Original Selection'}]}
+Response Node Completed
+--- 1. Executing Vision Node (The Eye) ---
+User Query: What is this item?
+Image Data Length: 1364754
+Image successfully decoded from base64.
+Sending request to Gemini model...
+Gemini Response: {
+  "detected_objects": [
+    {
+      "name": "Spot Dog Robot",
+      "bounding_box": [
+        752,
+        256,
+        976,
+        605
+      ],
+      "confidence": 0.92
+    }
+  ],
+  "product_name": "Spot Dog Robot",
+  "context": null,
+  "ambiguity_resolved": true
+}
+--- 2b. Executing Market Scout Node (The Explorer) ---
+--- 2. Executing Discovery Node (The Runner) ---
+Researching Product: Spot Dog Robot
+Starting Tavily search...
+Tavily found 15 reviews
+Starting SerpAPI search...
+SerpAPI found 40 offers
+Discovery Node Completed
+Market Scout Node Completed
+--- 3. Executing Critique Node (The Skeptic) ---
+Critique Output: {'fake_review_likelihood': "Medium. The reviews are mostly news articles and corporate releases, not independent user opinions. While they aren't necessarily 'fake' in the sense of being fabricated, they are heavily curated and likely to present a biased, positive view. The presence of multiple entries from the same source (Vale) further reduces the diversity of viewpoints.", 'price_integrity': "Markup. The pricing is all over the place, ranging from a few dollars to millions. This suggests that the search term 'Spot Dog Robot' is catching a wide range of products, from toys and kits to the actual Boston Dynamics Spot. The reported actual price of a Boston Dynamics Spot is in the tens to hundreds of thousands of dollars (CAD), so any listing significantly below that is likely for a different, smaller, or less capable product. The higher prices are likely inflated or for specialized configurations.", 'hidden_flaws': ['High price: The actual Spot robot is very expensive, making it inaccessible to most consumers.', 'Terrifying appearance: Some users find the robot unsettling or creepy.', 'Limited real-world applications: Some reviews question the practical uses of the robot outside of controlled environments.', 'Potential for misuse: Concerns exist about the robot being used for surveillance or law enforcement in ways that could infringe on privacy.', 'Durability concerns: One comment mentions Spot being easily damaged by a forklift.']}
+Critique Node Completed
+--- 4. Executing Analysis Node (The Brain) ---
+Scoring 4 candidates...
+--- 3. Executing Skeptic Node (The Critic) for Main Product ---
+--- 3. Executing Skeptic Node (The Critic) for Roborock Qrevo S5V ---
+--- 3. Executing Skeptic Node (The Critic) for Ecovacs Deebot X11 ---
+--- 3. Executing Skeptic Node (The Critic) for Roborock Saros 10R ---
+Valid reviews count: 15
+Valid reviews count: 14
+Valid reviews count: 14
+Valid reviews count: 15
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Analysis Node Completed
+--- 5. Executing Response Node (The Speaker) ---
+Response Node Payload: {'outcome': 'highly_recommended', 'identified_product': 'Roborock Saros 10R', 'summary': 'Based on your preferences and our analysis, the Roborock Saros 10R stands out as a great choice! It scored highest due to a strong balance of price and quality. While other options like the Roborock Qrevo S5V and Ecovacs Deebot X11 were considered, the Saros 10R provides the best overall value. Your preferences for price sensitivity, quality, and brand reputation were all factored into this recommendation.', 'price_analysis': {'price_score': 0.7112947510094213, 'weighted_price': 0.35564737550471065}, 'community_sentiment': {'trust_score': 6.5, 'sentiment_score': 0.4}, 'alternatives': [{'name': 'Roborock Saros 10R', 'score': 68.4, 'reason': 'Identified as a top option after research.'}, {'name': 'Roborock Qrevo S5V', 'score': 59.3, 'reason': 'Identified as a top option after research.'}, {'name': 'Main Product', 'score': 49.8, 'reason': 'Original Selection'}, {'name': 'Ecovacs Deebot X11', 'score': 42.4, 'reason': 'Identified as a top option after research.'}]}
+Response Node Completed
+--- 1. Executing Vision Node (The Eye) ---
+User Query: What is this item?
+Image Data Length: 1364754
+Image successfully decoded from base64.
+Sending request to Gemini model...
+Gemini Response: {
+  "detected_objects": [
+    {
+      "name": "robot",
+      "bounding_box": [
+        738,
+        252,
+        983,
+        615
+      ],
+      "confidence": 0.97
+    },
+    {
+      "name": "Wen band saw",
+      "bounding_box": [
+        138,
+        63,
+        478,
+        168
+      ],
+      "confidence": 0.87
+    },
+    {
+      "name": "table",
+      "bounding_box": [
+        405,
+        200,
+        664,
+        453
+      ],
+      "confidence": 0.84
+    },
+    {
+      "name": "Tool rack",
+      "bounding_box": [
+        94,
+        531,
+        679,
+        782
+      ],
+      "confidence": 0.95
+    },
+    {
+      "name": "person",
+      "bounding_box": [
+        0,
+        682,
+        1000,
+        982
+      ],
+      "confidence": 0.99
+    }
+  ],
+  "product_name": "robot",
+  "context": null,
+  "ambiguity_resolved": true
+}
+--- 2b. Executing Market Scout Node (The Explorer) ---
+--- 2. Executing Discovery Node (The Runner) ---
+Researching Product: robot
+Starting Tavily search...
+Tavily found 15 reviews
+Starting SerpAPI search...
+Market Scout Node Completed
+SerpAPI found 40 offers
+Discovery Node Completed
+--- 3. Executing Critique Node (The Skeptic) ---
+Critique Output: {'fake_review_likelihood': "Medium. There are snippets of reviews from known brands like iRobot touting how 'impressed' they are, which is generic and could be marketing material rather than genuine user feedback. Also, there's a snippet about a $20 robot vacuum that claims 'big specs' and 'strong suction power' which seems improbable for such a low price, suggesting potentially inflated claims. However, there are also Reddit threads discussing specific models and seeking real-world feedback, lending some credibility.", 'price_integrity': "Markup. The pricing data is all over the place, ranging from a few dollars to tens of thousands. There are several instances of wildly varying prices for what is ostensibly the same product across different vendors (especially RobotShop.com with extreme outliers), implying significant markups and potentially unreliable pricing data. The 'deals' claiming 66% off at Best Buy should be investigated further, as this is a common tactic to make a product seem more appealing than it is. Also, some cheap robots are advertised on Alibaba, which might be a good deal, but the quality should be checked.", 'hidden_flaws': ['Low suction power for budget models (implied by the skepticism around the $20 robot vacuum)', 'Poor obstacle avoidance (mentioned in the context of the Mova P10 Pro, implying this is a general concern)', 'Questionable reliability and longevity of very cheap models', 'Potential overstatement of features and performance in marketing materials', 'Difficulties choosing between high-end models due to lack of unbiased reviews', 'LiDAR functionality may be absent in cheaper models']}
+Critique Node Completed
+--- 4. Executing Analysis Node (The Brain) ---
+Scoring 4 candidates...
+--- 3. Executing Skeptic Node (The Critic) for Main Product ---
+--- 3. Executing Skeptic Node (The Critic) for Ecovacs Deebot X11 ---
+--- 3. Executing Skeptic Node (The Critic) for Roborock Qrevo S5V ---
+--- 3. Executing Skeptic Node (The Critic) for Roborock Saros 10R ---
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Analysis Node Completed
+--- 5. Executing Response Node (The Speaker) ---
+Response Node Payload: {'outcome': 'highly_recommended', 'identified_product': 'Roborock Qrevo S5V', 'summary': "Based on our analysis, the Roborock Qrevo S5V is a great choice! It's consistently ranked as one of the best robot vacuums for 2026, thanks to its advanced features and smart navigation. While we also looked at other options like the Roborock Saros 10R and Ecovacs Deebot X11, the Qrevo S5V came out on top. We considered factors like price, quality, brand reputation, and even eco-friendliness to tailor this recommendation to your preferences.", 'price_analysis': {'price_score': 0.4616473755047106, 'weighted_price': 0.2308236877523553}, 'community_sentiment': {'trust_score': 7.5, 'sentiment_score': 0.8, 'weighted_quality': 0.4275, 'weighted_trust': 0.30000000000000004, 'total_score': 68.5}, 'alternatives': [{'name': 'Roborock Qrevo S5V', 'score': 68.5, 'reason': 'Listed among the best robot vacuum options for 2026.'}, {'name': 'Roborock Saros 10R', 'score': 68.4, 'reason': 'Cited as a top contender for best robot vacuum in 2026 due to advanced features and smart navigation.'}, {'name': 'Ecovacs Deebot X11', 'score': 52.2, 'reason': 'Identified as a top option for robot vacuums in 2026.'}, {'name': 'Main Product', 'score': 40.7, 'reason': 'Original Selection'}]}
+Response Node Completed
+--- 1. Executing Vision Node (The Eye) ---
+User Query: What is this item?
+Image Data Length: 1364754
+Image successfully decoded from base64.
+Sending request to Gemini model...
+Gemini Response: {
+  "detected_objects": [
+    {
+      "name": "table",
+      "bounding_box": [
+        395,
+        358,
+        664,
+        451
+      ],
+      "confidence": 0.58
+    },
+    {
+      "name": "fire extinguisher",
+      "bounding_box": [
+        484,
+        439,
+        666,
+        468
+      ],
+      "confidence": 0.64
+    },
+    {
+      "name": "yellow robot",
+      "bounding_box": [
+        744,
+        252,
+        997,
+        600
+      ],
+      "confidence": 0.73
+    },
+    {
+      "name": "tool rack",
+      "bounding_box": [
+        89,
+        532,
+        703,
+        774
+      ],
+      "confidence": 0.86
+    },
+    {
+      "name": "band saw",
+      "bounding_box": [
+        134,
+        66,
+        468,
+        166
+      ],
+      "confidence": 0.73
+    }
+  ],
+  "product_name": "yellow robot",
+  "context": null,
+  "ambiguity_resolved": true
+}
+--- 2b. Executing Market Scout Node (The Explorer) ---
+--- 2. Executing Discovery Node (The Runner) ---
+Researching Product: yellow robot
+Starting Tavily search...
+Tavily found 15 reviews
+Starting SerpAPI search...
+SerpAPI found 40 offers
+Discovery Node Completed
+Market Scout Node Completed
+--- 3. Executing Critique Node (The Skeptic) ---
+Critique Output: {'fake_review_likelihood': "Medium. The reviews are a mixed bag.  Some appear to be genuine user experiences from Reddit, discussing the pros and cons of similar products like Litter Robots and robot vacuums. However, many of the review snippets are simply descriptions of companies or products, lacking any real user sentiment or evaluation.  The 'Yellow Robot Marketing' reviews are particularly suspect, as they mostly just repeat the company's self-description. The single negative review from Reddit is brief and lacks context, making it difficult to assess its validity.", 'price_integrity': "Markup. The pricing data shows a HUGE range of prices for 'yellow robot' from under $10 CAD to over $370 CAD. This suggests that the search term is too broad and includes a variety of products, from small toys to potentially high-end robot vacuums. Without knowing the specific product being targeted, it's impossible to determine if a particular price is a 'deal' or a markup. Also, the lack of shipping costs and total costs makes it impossible to determine the final price.", 'hidden_flaws': ["The search results are ambiguous, encompassing marketing agencies ('Yellow Robot Marketing') and various yellow-colored robots, primarily vacuum cleaners and toys. This makes it difficult to extract meaningful information about a specific product.", 'Several Reddit users report issues with Litter Robots, specifically mentioning error codes that lead people to discard them, making used units risky.', 'Many of the robot vacuums on Amazon and AliExpress are from unknown or generic brands. The quality and reliability of these brands are questionable.', "The reviews for 'Yellow Robot Marketing' are shallow and promotional, lacking concrete examples of their work or client testimonials.", 'The listing of a Boston Dynamic Robot Dog skews price comparisons significantly as that is a highly specialized and expensive robot outside the scope of home robotics.']}
+Critique Node Completed
+--- 4. Executing Analysis Node (The Brain) ---
+Scoring 4 candidates...
+--- 3. Executing Skeptic Node (The Critic) for Dreame X60 Max Ultra Complete ---
+--- 3. Executing Skeptic Node (The Critic) for Main Product ---
+--- 3. Executing Skeptic Node (The Critic) for Roborock Saros 20 ---
+--- 3. Executing Skeptic Node (The Critic) for Richtech Robotics (RR) ---
+Valid reviews count: 14
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Analysis Node Completed
+--- 5. Executing Response Node (The Speaker) ---
+Response Node Payload: {'outcome': 'highly_recommended', 'identified_product': 'Richtech Robotics (RR)', 'summary': "Based on your preferences and the analysis, the Richtech Robotics (RR) stands out as a strong choice! It scored highest, with a mention as a favorite robotic stock for 2026 and showcasing their latest robots at CES. While its sentiment score is slightly negative, the overall score is compelling. Consider alternatives like the Roborock Saros 20 for its advanced smart navigation and sleek design if you're looking for something different.", 'price_analysis': {'price_score': 0.940276185543613, 'weighted_price': 0.4701380927718065}, 'community_sentiment': {'trust_score': 2.0, 'sentiment_score': -0.6}, 'alternatives': [{'name': 'Richtech Robotics (RR)', 'score': 46.4, 'reason': 'Mentioned as a favorite robotic stock for 2026, showcasing latest robots at CES.'}, {'name': 'Roborock Saros 20', 'score': 44.7, 'reason': 'Advanced smart navigation and sleek design, recommended for performance.'}, {'name': 'Dreame X60 Max Ultra Complete', 'score': 36.3, 'reason': 'Advanced smart navigation and sleek design, recommended for performance.'}, {'name': 'Main Product', 'score': 34.3, 'reason': 'Original Selection'}]}
+Response Node Completed
+--- 1. Executing Vision Node (The Eye) ---
+User Query: What is this item?
+Image Data Length: 1364754
+Image successfully decoded from base64.
+Sending request to Gemini model...
+Gemini Response: {
+  "detected_objects": [
+    {
+      "name": "yellow robot dog",
+      "bounding_box": [
+        747,
+        253,
+        996,
+        609
+      ],
+      "confidence": 0.95
+    },
+    {
+      "name": "metal shelving unit",
+      "bounding_box": [
+        127,
+        531,
+        679,
+        785
+      ],
+      "confidence": 0.9
+    },
+    {
+      "name": "band saw",
+      "bounding_box": [
+        137,
+        63,
+        485,
+        197
+      ],
+      "confidence": 0.8
+    }
+  ],
+  "product_name": "yellow robot dog",
+  "context": null,
+  "ambiguity_resolved": true
+}
+--- 2. Executing Discovery Node (The Runner) ---
+--- 2b. Executing Market Scout Node (The Explorer) ---
+Researching Product: yellow robot dog
+Starting Tavily search...
+Tavily found 15 reviews
+Starting SerpAPI search...
+Market Scout Node Completed
+SerpAPI found 40 offers
+Discovery Node Completed
+--- 3. Executing Critique Node (The Skeptic) ---
+Critique Output: {'fake_review_likelihood': "Medium. There are indications of potential scams and paid reviews, specifically mentioning 'Wuffy Robot Puppy' and 'paid reviews'. However, there are also mentions of genuine applications, suggesting mixed opinions and potentially legitimate products as well.", 'price_integrity': "Markup. The price range is extremely wide (CAD $13.25 to CAD $4,5571.43) and includes very expensive 'ultra realistic AI' models alongside cheaper plastic toys. There's likely a significant markup on the 'realistic' models, preying on consumer desire for advanced technology.", 'hidden_flaws': ['Plastic construction (cheap materials)', 'Unrealistic appearance (googly eyes, not lifelike)', 'Potential scam/fake product (Wuffy Robot Puppy)', 'Paid reviews', 'Concerns about the ethics of replacing real pets with robotic ones, especially for children.', 'Scuffs and wear on used models']}
+Critique Node Completed
+--- 4. Executing Analysis Node (The Brain) ---
+Scoring 4 candidates...
+--- 3. Executing Skeptic Node (The Critic) for Loona Robot ---
+--- 3. Executing Skeptic Node (The Critic) for Aibo ---
+--- 3. Executing Skeptic Node (The Critic) for Tombot ---
+--- 3. Executing Skeptic Node (The Critic) for Main Product ---
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Valid reviews count: 15
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Skeptic analysis completed successfully.
+Analysis Node Completed
+--- 5. Executing Response Node (The Speaker) ---
+Response Node Payload: {'outcome': 'highly_recommended', 'identified_product': 'Tombot', 'summary': "Based on your preferences and our analysis, the Tombot stands out as a great choice, scoring 71.9! It's designed to provide emotional support, especially for seniors, which aligns well with prioritizing trust and quality. While other options like the Loona Robot are interactive and mimic dog-like behavior, the Tombot's focus on emotional support makes it a top pick. The Aibo, another AI-driven dog, scored lower, suggesting it might not be the best fit for your specific needs.", 'price_analysis': {'price_score': 0.958999603397705, 'weighted_price': 0.4794998016988525, 'price_sensitivity': 0.5}, 'community_sentiment': {'trust_score': 4.5, 'sentiment_score': 0.6, 'weighted_trust': 0.18000000000000002}, 'alternatives': [{'name': 'Tombot', 'score': 71.9, 'reason': 'Provides emotional support, especially for seniors.'}, {'name': 'Loona Robot', 'score': 60.5, 'reason': 'Mimics the actions of a dog and is highly interactive.'}, {'name': 'Aibo', 'score': 37.9, 'reason': 'AI-driven dog with lifelike behavior.'}, {'name': 'Main Product', 'score': 35.7, 'reason': 'Original Selection'}], 'active_product': {'name': 'Tombot', 'bounding_box': None, 'detected_objects': [{'name': 'yellow robot dog', 'bounding_box': [747, 253, 996, 609], 'confidence': 0.95}, {'name': 'metal shelving unit', 'bounding_box': [127, 531, 679, 785], 'confidence': 0.9}, {'name': 'band saw', 'bounding_box': [137, 63, 485, 197], 'confidence': 0.8}]}}
+Response Node Completed

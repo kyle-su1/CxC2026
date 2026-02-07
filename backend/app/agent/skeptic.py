@@ -117,21 +117,51 @@ Output the result in the specified JSON format.
             )
 
 # Convenience function
+log_file = "/app/debug_output.txt"
+def log_debug(message):
+    try:
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(f"{str(message)}\n")
+    except Exception:
+        pass
+
 def analyze_reviews(product_name: str, reviews_data: List[dict]) -> dict:
     """
     Wrapper to be called by API/LangGraph.
     Converts dicts -> Pydantic Models -> Analyzes -> Returns Dict
     """
+    log_debug(f"--- 3. Executing Skeptic Node (The Critic) for {product_name} ---")
+    
     agent = SkepticAgent()
     
     # Validation/Conversion
     valid_reviews = []
     for r in reviews_data:
         try:
-            valid_reviews.append(Review(**r))
+            # Handle potential source/url field mismatches or missing fields
+            # The Tavily client returns ReviewSnippet(source, url, snippet)
+            # The Review model expects (source, text, rating, date)
+            # Mapping snippet -> text
+            review_dict = {
+                "source": r.get("source", "Unknown"),
+                "text": r.get("snippet", "") or r.get("text", ""),
+                "rating": r.get("rating"),
+                "date": r.get("date")
+            }
+            valid_reviews.append(Review(**review_dict))
         except Exception as e:
             logger.warning(f"Skipping malformed review: {e}")
+            log_debug(f"Skipping malformed review: {e}")
             continue
             
-    result = agent.analyze_reviews(product_name, valid_reviews)
-    return result.model_dump()
+    log_debug(f"Valid reviews count: {len(valid_reviews)}")
+    
+    try:
+        result = agent.analyze_reviews(product_name, valid_reviews)
+        log_debug("Skeptic analysis completed successfully.")
+        return result.model_dump()
+    except Exception as e:
+        log_debug(f"Skeptic analysis CRASHED: {e}")
+        import traceback
+        log_debug(traceback.format_exc())
+        raise e

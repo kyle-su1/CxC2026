@@ -22,6 +22,15 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
        but we can prep the data here).
     """
     print("--- 4. Executing Analysis Node (The Brain) ---")
+    log_file = "/app/debug_output.txt"
+    def log_debug(message):
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"{str(message)}\n")
+        except Exception:
+            pass
+
+    log_debug("--- 4. Executing Analysis Node (The Brain) ---")
     
     # Inputs
     research = state.get('research_data', {})
@@ -87,6 +96,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     alternatives_scored = []
     
     print(f"   [Analysis] Scoring {len(alternatives)} candidates (including Main Product)...")
+    log_debug(f"Scoring {len(alternatives)} candidates...")
     
     # Calculate Market Average Price across all candidates
     all_prices = []
@@ -142,6 +152,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             except Exception as exc:
                 alt = future_to_alt[future]
                 print(f"   [Analysis] Error processing {alt.get('name')}: {exc}")
+                log_debug(f"Error processing {alt.get('name')}: {exc}")
 
     # Sort by Total Score
     alternatives_scored.sort(key=lambda x: x['score_details']['total_score'], reverse=True)
@@ -165,6 +176,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
         "applied_preferences": final_weights
     }
     
+    log_debug("Analysis Node Completed")
     return {
         "analysis_object": analysis_object, 
         "alternatives_analysis": alternatives_scored

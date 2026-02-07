@@ -13,12 +13,24 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
     2. Scrape reviews (Reddit, YouTube, RTings) for specific context.
     3. Look up current pricing (SerpAPI).
     """
+    log_file = "/app/debug_output.txt"
+    def log_debug(message):
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"{str(message)}\n")
+        except Exception:
+            pass
+
+    log_debug("--- 2. Executing Discovery Node (The Runner) ---")
     print("--- 2. Executing Discovery Node (The Runner) ---")
     
     product_query_data = state.get('product_query', {})
-    product_name = product_query_data.get('product_name', '')
+    product_name = product_query_data.get('canonical_name') or product_query_data.get('product_name', '')
+    
+    log_debug(f"Researching Product: {product_name}")
     
     if not product_name or "Error" in product_name:
+        log_debug("ERROR: No valid product to research")
         return {"research_data": {"error": "No valid product to research"}}
 
     # Create ProductQuery object for the source clients
@@ -32,22 +44,28 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
 
     # 1. Tavily Search (Reviews)
     print(f"   [Runner] Searching reviews for: {product_name}")
+    log_debug("Starting Tavily search...")
     try:
         reviews = find_review_snippets(product, trace_log)
         # Convert Pydantic models to dicts for state serialization
         reviews_data = [r.dict() for r in reviews]
+        log_debug(f"Tavily found {len(reviews_data)} reviews")
     except Exception as e:
         print(f"   [Runner] Tavily Error: {e}")
+        log_debug(f"Tavily Error: {e}")
         reviews_data = []
 
     # 2. SerpAPI Search (Pricing)
     print(f"   [Runner] Checking prices for: {product_name}")
+    log_debug("Starting SerpAPI search...")
     try:
         offers = get_shopping_offers(product, trace_log)
         # Convert Pydantic models to dicts for state serialization
         offers_data = [o.dict() for o in offers]
+        log_debug(f"SerpAPI found {len(offers_data)} offers")
     except Exception as e:
         print(f"   [Runner] SerpAPI Error: {e}")
+        log_debug(f"SerpAPI Error: {e}")
         offers_data = []
     
     # 3. Aggregate Data
@@ -58,4 +76,5 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
         "trace": trace_log
     }
     
+    log_debug("Discovery Node Completed")
     return {"research_data": research_data}

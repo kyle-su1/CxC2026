@@ -73,3 +73,82 @@ def check_single_price(query: str) -> str | None:
         best_offer = offers[0]
         return f"${best_offer.price_cents / 100:.2f} {best_offer.currency}"
     return None
+
+
+from serpapi import GoogleSearch
+
+def search_google_lens(image_path: str) -> Dict[str, Any]:
+    """
+    Performs a Google Lens search using SerpAPI.
+    
+    Args:
+        image_path: Absolute path to the image file to upload.
+        
+    Returns:
+        Dict containing 'visual_matches' and 'knowledge_graph' from the API response.
+    """
+    api_key = settings.SERPAPI_API_KEY
+    if not api_key:
+        print("Error: Missing SERPAPI_API_KEY")
+        return {}
+        
+    params = {
+        "engine": "google_lens",
+        "api_key": api_key,
+        "country": "ca",
+        "hl": "en"
+    }
+    
+    
+    log_file = "/app/debug_output.txt"
+    def log_debug(message):
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"[SerpAPI] {str(message)}\n")
+        except Exception:
+            pass
+
+    
+    log_file = "/app/debug_output.txt"
+    def log_debug(message):
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(f"[SerpAPI] {str(message)}\n")
+        except Exception:
+            pass
+
+    try:
+        # The python client wrapper is failing on file upload. 
+        # We will use requests directly to handle multipart/form-data.
+        
+        url = "https://serpapi.com/search"
+        params = {
+            "engine": "google_lens",
+            "api_key": api_key,
+            "country": "ca",
+            "hl": "en"
+        }
+        
+        log_debug(f"Uploading image to SerpAPI Lens (Engine: google_lens)...")
+        
+        with open(image_path, 'rb') as f:
+            files = {
+                "image_file": (image_path, f, "image/jpeg")
+            }
+            response = requests.post(url, params=params, files=files, timeout=60)
+            
+        if response.status_code != 200:
+            log_debug(f"HTTP Error: {response.status_code} - {response.text}")
+            return {}
+            
+        results = response.json()
+        
+        log_debug(f"Lens Search Results Keys: {list(results.keys())}")
+        if "error" in results:
+             log_debug(f"API Error: {results['error']}")
+        
+        return results
+    except Exception as e:
+        print(f"SerpAPI Lens Error: {e}")
+        log_debug(f"Lens Error: {e}")
+        return {}
