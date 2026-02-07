@@ -94,6 +94,81 @@ The workflow is a Directed Acyclic Graph (DAG) managed by LangGraph.
     3.  **Context Extraction**: Reads text on screen (OCR).
 *   **Output**: Structured Product Query containing a list of `detected_objects`.
 
+### **On-Demand Google Lens Identification**
+The Vision Node provides fast initial detection, but for **specific product identification** (e.g., "Keychron K2 HE" instead of "Mechanical Keyboard"), we use **SerpAPI Google Lens** on-demand.
+
+#### **Why On-Demand?**
+*   **Latency**: Lens API calls take 5-10 seconds each. Calling for every object during initial analysis would add 30+ seconds.
+*   **Cost**: SerpAPI charges per call. On-demand means we only pay for objects the user actually clicks.
+*   **User Experience**: Initial bounding boxes appear fast (~2-5s), then specific identification happens when needed.
+
+#### **Architecture**
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   On-Demand Lens Flow                             │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│   1. Initial Analysis (Fast - Gemini Only)                       │
+│      Image → Gemini → Bounding Boxes + Generic Names             │
+│      Time: ~2-5 seconds                                          │
+│                                                                   │
+│   2. User Clicks Bounding Box                                    │
+│      Frontend calls: POST /api/v1/agent/identify                 │
+│                                                                   │
+│   3. On-Demand Identification                                    │
+│      ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     │
+│      │ Crop Image  │ ──► │ Upload to   │ ──► │ SerpAPI     │     │
+│      │ to BBox     │     │ ImgBB/ngrok │     │ Google Lens │     │
+│      └─────────────┘     └─────────────┘     └─────────────┘     │
+│                                                      │            │
+│   4. Result Cached in Frontend State                 ▼            │
+│      Subsequent clicks → Instant response      {product_name}    │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### **Implementation Files**
+| File | Purpose |
+|------|---------|
+| `backend/app/services/lens_identify.py` | SerpAPI Lens API integration |
+| `backend/app/services/image_crop.py` | Crop images to bounding box coordinates |
+| `backend/app/services/image_hosting.py` | Temporary image hosting (ngrok fallback) |
+| `backend/app/api/endpoints/identify.py` | On-demand `/identify` endpoint |
+| `frontend/src/lib/api.js` | `identifyObject()` function |
+
+#### **Image Hosting Strategy**
+SerpAPI requires a **publicly accessible URL** for the image. Two options:
+1.  **ImgBB (Preferred)**: Fast CDN, direct base64 upload, no tunnel required.
+    *   Requires `IMGBB_API_KEY` in `.env`
+2.  **Ngrok (Fallback)**: Tunnels local server to public URL.
+    *   Requires `PUBLIC_BASE_URL=https://xxx.ngrok-free.app` in `.env`
+
+#### **Lens Response Parsing**
+```python
+# Priority order for extracting product name:
+1. knowledge_graph.title    # Most authoritative (95% confidence)
+2. visual_matches[0].title  # Good fallback (80% confidence)
+3. shopping_results[0].title # Commercial products (85% confidence)
+4. Gemini's original name   # Last resort (50% confidence)
+```
+
+#### **Frontend Caching**
+Results are cached in React state (`identifiedCache`) by object index:
+```javascript
+// First click: API call → cache result
+// Second click: Instant from cache
+const [identifiedCache, setIdentifiedCache] = useState({});
+```
+
+#### **Environment Variables**
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SERPAPI_API_KEY` | Yes | SerpAPI account key |
+| `IMGBB_API_KEY` | Recommended | ImgBB API key for fast hosting |
+| `PUBLIC_BASE_URL` | Fallback | Ngrok URL if no ImgBB key |
+
+
+
 ### **Node 2: Discovery Layer (The "Researcher" & "Explorer")**
 This phase runs two parallel agents to gather deep data.
 
