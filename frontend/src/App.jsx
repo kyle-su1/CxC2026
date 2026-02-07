@@ -38,6 +38,7 @@ function App() {
 
       const data = await response.json();
       if (response.ok) {
+        console.log("Analysis Result from Backend:", data); // Debug log
         setAnalysisResult(data);
       } else {
         console.error("Analysis failed:", data);
@@ -107,10 +108,14 @@ function App() {
                   <div className="space-y-2">
                     {analysisResult.objects && analysisResult.objects.map((obj, idx) => (
                       <div key={idx} className="flex items-center justify-between text-sm bg-white/5 p-2 rounded border border-white/5">
-                        <span className="font-medium text-gray-200">{obj.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-200">{obj.name}</span>
+                          {obj.openAiLabel && (
+                            <span className="text-xs text-blue-300">🤖 {obj.openAiLabel}</span>
+                          )}
+                        </div>
                         <span className="text-gray-400">{(obj.score * 100).toFixed(1)}%</span>
-                      </div>
-                    ))}
+                      </div>))}
                     {(!analysisResult.objects || analysisResult.objects.length === 0) && (
                       <p className="text-gray-500 italic">No objects detected.</p>
                     )}

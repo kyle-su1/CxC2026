@@ -98,7 +98,7 @@ const ImageUploader = ({ onImageSelected, initialImage, overlays = [] }) => {
                 {preview ? (
                     <div className="relative w-full h-full flex items-center justify-center">
                         {/* Image Container with relative positioning for overlays */}
-                        <div className="relative max-h-full max-w-full">
+                        <div className="relative inline-flex max-h-full max-w-full">
                             <img
                                 src={preview}
                                 alt="Preview"
