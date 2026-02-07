@@ -1,38 +1,42 @@
 from langgraph.graph import StateGraph, END
-from .state import AgentState
-from .nodes import (
-    parse_image,
-    verify_item,
-    get_prices,
-    get_reviews,
-    analyze_reviews,
-    final_recommendation
+from app.agent.state import AgentState
+from app.agent.nodes import (
+    node_user_intent_vision,
+    node_discovery_runner,
+    node_skeptic_critique, 
+    node_analysis_synthesis,
+    node_response_formulation
 )
 
-def create_agent_graph():
-    workflow = StateGraph(AgentState)
+# 1. Define the Graph
+workflow = StateGraph(AgentState)
 
-    # Add nodes
-    workflow.add_node("parse_image", parse_image)
-    workflow.add_node("verify_item", verify_item)
-    workflow.add_node("get_prices", get_prices)
-    workflow.add_node("get_reviews", get_reviews)
-    workflow.add_node("analyze_reviews", analyze_reviews)
-    workflow.add_node("final_recommendation", final_recommendation)
+# 2. Add Nodes
+# Each node function receives the current state and returns an update.
+workflow.add_node("vision_node", node_user_intent_vision)
+workflow.add_node("discovery_node", node_discovery_runner)
+workflow.add_node("skeptic_node", node_skeptic_critique)
+workflow.add_node("analysis_node", node_analysis_synthesis)
+workflow.add_node("response_node", node_response_formulation)
 
-    # Define edges
-    # For now, it's a linear flow
-    workflow.set_entry_point("parse_image")
-    workflow.add_edge("parse_image", "verify_item")
-    workflow.add_edge("verify_item", "get_prices")
-    workflow.add_edge("get_prices", "get_reviews")
-    workflow.add_edge("get_reviews", "analyze_reviews")
-    workflow.add_edge("analyze_reviews", "final_recommendation")
-    workflow.add_edge("final_recommendation", END)
+# 3. Define Edges (The Flow)
+# Start -> Vision
+workflow.set_entry_point("vision_node")
 
-    # Compile the graph
-    app = workflow.compile()
-    
-    return app
+# Vision -> Discovery
+workflow.add_edge("vision_node", "discovery_node")
 
-agent_app = create_agent_graph()
+# Discovery -> Skeptic
+workflow.add_edge("discovery_node", "skeptic_node")
+
+# Skeptic -> Analysis
+workflow.add_edge("skeptic_node", "analysis_node")
+
+# Analysis -> Response
+workflow.add_edge("analysis_node", "response_node")
+
+# Response -> End
+workflow.add_edge("response_node", END)
+
+# 4. Compile the Graph
+agent_app = workflow.compile()

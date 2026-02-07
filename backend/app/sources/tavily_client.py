@@ -1,14 +1,13 @@
-import os
 import requests
 from typing import List
 from app.schemas.types import ProductQuery, ReviewSnippet
-
+from app.core.config import settings
 
 TAVILY_URL = "https://api.tavily.com/search"
 
 
 def find_review_snippets(product: ProductQuery, trace: list) -> List[ReviewSnippet]:
-    api_key = os.getenv("TAVILY_API_KEY")
+    api_key = settings.TAVILY_API_KEY
 
     if not api_key:
         trace.append({"step": "tavily", "detail": "Missing API key"})
@@ -31,6 +30,10 @@ def find_review_snippets(product: ProductQuery, trace: list) -> List[ReviewSnipp
 
         r = requests.post(TAVILY_URL, json=payload, timeout=10)
         data = r.json()
+        
+        if data.get("error"):
+             trace.append({"step": "tavily", "detail": f"API Error: {data.get('error')}"})
+             continue
 
         for item in data.get("results", []):
             url = item.get("url")

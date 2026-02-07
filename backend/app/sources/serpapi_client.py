@@ -1,14 +1,13 @@
-import os
 import requests
-from typing import List
+from typing import List, Dict, Any
 from app.schemas.types import ProductQuery, PriceOffer
-
+from app.core.config import settings
 
 SERPAPI_URL = "https://serpapi.com/search.json"
 
 
 def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
-    api_key = os.getenv("SERPAPI_API_KEY")
+    api_key = settings.SERPAPI_API_KEY
 
     if not api_key:
         trace.append({"step": "serpapi", "detail": "Missing API key"})
@@ -25,6 +24,10 @@ def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
 
     r = requests.get(SERPAPI_URL, params=params, timeout=10)
     data = r.json()
+
+    if "error" in data:
+        trace.append({"step": "serpapi", "detail": f"API Error: {data['error']}"})
+        return []
 
     offers = []
 
