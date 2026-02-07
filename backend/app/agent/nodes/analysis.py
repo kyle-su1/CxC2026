@@ -40,28 +40,35 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     user_id = 1 # TODO: Get from state when Auth is fully wired across graph
     
     # 1. Load User Preferences
-    # db = SessionLocal()
-    # try:
-    #     # Get explicit quals (from DB or State)
-    #     state_prefs = state.get('user_preferences', {})
-    #     db_prefs = get_user_explicit_preferences(db, user_id)
+    db = SessionLocal()
+    final_weights = {}
+    try:
+        # Get explicit quals (from DB or State)
+        state_prefs = state.get('user_preferences', {})
         
-    #     # Merge explicit (State > DB)
-    #     explicit_prefs = {**db_prefs, **state_prefs}
+        # Determine User ID - try state, then session lookup, then default
+        # user_id is hardcoded to 1 in many places for MVP
+        db_prefs = get_user_explicit_preferences(db, user_id)
         
-    #     # Get learned weights from past behavior
-    #     learned_weights = get_learned_weights(db, user_id)
+        # Merge explicit (State > DB)
+        # If State has params, they override DB (e.g. current session tweaks)
+        explicit_prefs = {**db_prefs, **state_prefs}
         
-    #     # Merge everything
-    #     final_weights = merge_weights(explicit_prefs, learned_weights)
-    #     print(f"   [Analysis] Final Weights: {final_weights}")
+        # Get learned weights from past behavior
+        learned_weights = get_learned_weights(db, user_id)
         
-    # finally:
-    #     db.close()
-
-    # Temporary bypass for testing without DB
-    state_prefs = state.get('user_preferences', {})
-    final_weights = merge_weights(state_prefs, {})
+        # Merge everything
+        final_weights = merge_weights(explicit_prefs, learned_weights)
+        print(f"   [Analysis] Final Weights: {final_weights}")
+        
+    except Exception as e:
+        print(f"   [Analysis] Error loading preferences: {e}")
+        # Fallback
+        state_prefs = state.get('user_preferences', {})
+        final_weights = merge_weights(state_prefs, {})
+        
+    finally:
+        db.close()
     print(f"   [Analysis] Final Weights (DB Skipped): {final_weights}")
         
     # 2. Analyze Alternatives (if available)
@@ -69,7 +76,8 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     
     # 2b. Add Main Product to analysis list
     # We construct a 'candidate-like' object for the main product to unify logic
-    main_product_name = research.get('product_query', {}).get('canonical_name') or "Main Product"
+    product_query = state.get('product_query', {})
+    main_product_name = product_query.get('canonical_name') or product_query.get('product_name') or "Main Product"
     
     # Extract price for main product
     main_prices = research.get('competitor_prices', [])
@@ -113,22 +121,29 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     market_avg = sum(all_prices) / len(all_prices) if all_prices else 0.0
     print(f"   [Analysis] Market Average Price: ${market_avg:.2f}")
 
-    # Helper function for parallel execution
-    # Initialize skeptic agent with MODEL_ANALYSIS (Node 4 specific model)
-    skeptic_agent = SkepticAgent(model_name=settings.MODEL_ANALYSIS)
-    
     def process_candidate(alt):
-        from app.agent.skeptic import Review
+        from app.agent.skeptic import Review, SkepticAgent
+        # Initialize agent INSIDE the thread/process to avoid pickling issues with gRPC
+        local_skeptic_agent = SkepticAgent(model_name=settings.MODEL_ANALYSIS)
+
         # Run Skeptic on alternative (Quantitative)
         reviews_data = alt.get('reviews', [])
         # Convert to Review objects
         valid_reviews = []
         for r in reviews_data:
             try:
-                valid_reviews.append(Review(**r))
-            except:
+                # Map ReviewSnippet fields to Review model
+                review_dict = {
+                    "source": r.get("source", "Unknown"),
+                    "text": r.get("snippet", "") or r.get("text", ""),
+                    "rating": r.get("rating"),
+                    "date": r.get("date")
+                }
+                valid_reviews.append(Review(**review_dict))
+            except Exception as e:
+                # logger.warning(f"Skipping review: {e}")
                 pass
-        sentiment_result = skeptic_agent.analyze_reviews(alt.get('name'), valid_reviews)
+        sentiment_result = local_skeptic_agent.analyze_reviews(alt.get('name'), valid_reviews)
         sentiment_data = sentiment_result.model_dump()
         
         # Extract features for scoring
@@ -156,16 +171,15 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     # Execute in parallel
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_alt = {executor.submit(process_candidate, alt): alt for alt in alternatives}
-        for future in as_completed(future_to_alt):
-            try:
-                result = future.result()
-                alternatives_scored.append(result)
-            except Exception as exc:
-                alt = future_to_alt[future]
-                print(f"   [Analysis] Error processing {alt.get('name')}: {exc}")
-                log_debug(f"Error processing {alt.get('name')}: {exc}")
+    # Execute sequentially for debugging
+    for alt in alternatives:
+        print(f"   [Analysis] Processing candidate: {alt.get('name')}")
+        try:
+            result = process_candidate(alt)
+            alternatives_scored.append(result)
+        except Exception as exc:
+            print(f"   [Analysis] Error processing {alt.get('name')}: {exc}")
+            log_debug(f"Error processing {alt.get('name')}: {exc}")
 
     # Sort by Total Score
     alternatives_scored.sort(key=lambda x: x['score_details']['total_score'], reverse=True)
