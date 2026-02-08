@@ -49,6 +49,45 @@ def adjust_eco_score(raw_score: float, product_name: str) -> float:
     return max(0.05, min(0.95, adjusted))  # Never go to extremes 0 or 1
 
 
+def sanitize_eco_notes(eco_notes: str, product_name: str, has_research_data: bool) -> str:
+    """
+    Strip out hallucinated certifications from eco_notes.
+    If no research data was provided, replace any certification claims with generic text.
+    """
+    import re
+    
+    # List of certification keywords that LLMs love to hallucinate
+    hallucination_patterns = [
+        r'\bB\s*Corp\b',
+        r'\bB-Corp\b', 
+        r'\bNet\s*Zero\b',
+        r'\bISO\s*\d+\b',
+        r'\bcarbon\s*neutral\b',
+        r'\bFSC\s*certified\b',
+        r'\bEnergy\s*Star\b',
+        r'\bEPEAT\b',
+        r'\bGreen\s*Seal\b',
+        r'\bCradle\s*to\s*Cradle\b',
+        r'\bFair\s*Trade\b',
+        r'\bRainforest\s*Alliance\b',
+    ]
+    
+    if not has_research_data:
+        # Check if any hallucination pattern exists
+        for pattern in hallucination_patterns:
+            if re.search(pattern, eco_notes, re.IGNORECASE):
+                # Replace the entire eco_notes with a safe generic message
+                name_lower = product_name.lower()
+                if 'refurbished' in name_lower or 'renewed' in name_lower:
+                    return "Refurbished product - extends device lifespan, reducing e-waste. Score based on product category."
+                elif any(x in name_lower for x in ['iphone', 'samsung', 'pixel', 'phone']):
+                    return "Electronics product. Score based on typical smartphone lifecycle and e-waste considerations."
+                else:
+                    return "No verified sustainability data found. Score based on product category."
+    
+    return eco_notes
+
+
 def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     """
     Node 4: Analysis & Synthesis (The "Brain")
@@ -283,7 +322,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "is_main": alt.get('is_main', False),       # Pass through for identification
             "price_val": price,                          # Pass through for display
             "eco_score": adjust_eco_score(sentiment_data.get('eco_score', 0.5), alt.get('name', '')),  # Adjusted eco score
-            "eco_notes": sentiment_data.get('eco_notes', '')     # Eco explanation
+            "eco_notes": sanitize_eco_notes(sentiment_data.get('eco_notes', ''), alt.get('name', ''), bool(eco_context))  # Sanitized eco notes
         }
 
     # Execute in parallel
