@@ -84,9 +84,10 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     main_price_val = 0.0
     if main_prices:
          try:
-             # competitor_prices from Node 2 structure: [{'price': ..., 'store': ...}]
-             # We take the first one or average? Let's take first for now.
-             main_price_val = float(main_prices[0].get('price', 0))
+             # competitor_prices from Node 2 structure: PriceOffer.dict()
+             # PriceOffer uses 'price_cents' (integer in cents), NOT 'price'
+             price_cents = main_prices[0].get('price_cents', 0)
+             main_price_val = float(price_cents) / 100.0  # Convert cents to dollars
          except:
              pass
     
@@ -100,6 +101,25 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
         main_image = main_prices[0].get('thumbnail') # SerpAPI often has this
         main_link = main_prices[0].get('url')
 
+    # --- MAIN PRODUCT FALLBACKS ---
+    # 1. Fallback Image from Reviews (if main has no image)
+    if not main_image:
+        # Check reviews for images
+        for r in main_reviews:
+            # r is a dict here (ReviewSnippet.dict())
+            if r.get('images'):
+                main_image = r['images'][0]
+                print(f"   [Analysis] Used fallback image from reviews for Main Product.")
+                break
+
+    # 2. Main Price Text
+    main_price_text = "Check Price"
+    if main_price_val > 0:
+        # Assuming CAD for now or extracting from first price offer
+        curr = main_prices[0].get('currency', 'CAD') if main_prices else 'CAD'
+        main_price_text = f"${main_price_val:.2f} {curr}"
+    # ------------------------------
+
     if main_product_name:
         alternatives.append({
             "name": main_product_name,
@@ -108,7 +128,8 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "reviews": main_reviews,
             "is_main": True,
             "image_url": main_image,
-            "purchase_link": main_link
+            "purchase_link": main_link,
+            "price_text": main_price_text
         })
 
     alternatives_scored = []
@@ -181,8 +202,11 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "score_details": score_obj.model_dump(),
             "sentiment_summary": sentiment_data.get('summary'),
             "reason": alt.get('reason'),
-            "image_url": alt.get('image_url'),          # Pass through
-            "purchase_link": alt.get('purchase_link'),   # Pass through
+            "image_url": alt.get('image_url'),          # Standard backend key
+            "purchase_link": alt.get('purchase_link'),   # Standard backend key
+            "image": alt.get('image_url'),          # Mapped for frontend (Alternatives)
+            "link": alt.get('purchase_link'),       # Mapped for frontend (Alternatives)
+            "price_text": alt.get('price_text'),    # Pass through for frontend
             "is_main": alt.get('is_main', False),       # Pass through for identification
             "price_val": price                          # Pass through for display
         }
@@ -219,10 +243,40 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     display_product = main_product if main_product else top_pick
     
     # 3. Construct Analysis Object
+    
+    # Determine Verdict
+    verdict = "Fair Price"
+    if display_product:
+        price_val = display_product.get('price_val', 0)
+        if price_val > 0 and market_avg > 0:
+            if price_val < market_avg * 0.9:
+                verdict = "Great Deal"
+            elif price_val > market_avg * 1.1:
+                verdict = "Premium Price"
+
     analysis_object = {
         "match_score": display_product['score_details']['total_score'] if display_product else 0.0,
         "recommended_product": display_product['name'] if display_product else "None",
         "scoring_breakdown": display_product['score_details'] if display_product else {},
+        "identified_product": display_product['name'] if display_product else "Unknown",
+        "summary": display_product.get('sentiment_summary') if display_product else "Analysis complete.",
+        
+        # ACTIVE PRODUCT (Main Card) - Ensure keys match DashboardPage.jsx expectations
+        "active_product": {
+            "name": display_product['name'] if display_product else "Unknown",
+            "image_url": display_product.get('image_url') if display_product else None,
+            "purchase_link": display_product.get('purchase_link') if display_product else None,
+            "price_text": display_product.get('price_text') if display_product else "Check Price",
+            "detected_objects": [] # Populated by Vision/Lens if available, kept empty here
+        },
+        
+        # PRICE ANALYSIS (Verdict)
+        "price_analysis": {
+            "verdict": verdict,
+            "market_average": f"${market_avg:.2f}",
+            "price_difference": f"{((display_product.get('price_val', 0) - market_avg) / market_avg * 100):.0f}%" if display_product and market_avg > 0 else "0%"
+        },
+        
         # Flag if a better alternative exists
         "better_alternative_exists": top_pick and main_product and top_pick['name'] != main_product['name'],
         "best_alternative": top_pick['name'] if top_pick and main_product and top_pick['name'] != main_product['name'] else None,
@@ -230,9 +284,23 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             {
                 "name": a['name'], 
                 "score": a['score_details']['total_score'],
-                "reason": a['reason']
+                "reason": a['reason'],
+                "image": a.get('image_url'), # Hybrid key
+                "link": a.get('purchase_link'), # Hybrid key
+                "price_text": a.get('price_text')
             } 
             for a in alternatives_scored if not a.get('is_main')  # Exclude main from alternatives list
+        ],
+        "alternatives": [ # DashboardPage.jsx uses 'alternatives' for the mapping, NOT 'alternatives_ranked'
+            {
+               "name": a['name'],
+               "score": a['score_details']['total_score'],
+               "reason": a['reason'],
+               "image": a.get('image_url'),
+               "link": a.get('purchase_link'),
+               "price_text": a.get('price_text')
+            }
+            for a in alternatives_scored if not a.get('is_main')
         ],
         "applied_preferences": final_weights
     }

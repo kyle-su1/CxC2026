@@ -1,0 +1,37 @@
+--- Testing Market Scout Node ---
+--- 2b. Executing Market Scout Node (The Explorer) ---
+   [Scout] Using visual attributes: ergonomic mouse
+   [Scout] Strategy: best alternative | Queries: ['best alternative to Logitech MX Master 3S ergonomic mouse 2026', 'similar ergonomic mouse like Logitech MX Master 3S']
+   [Scout] Executing search for alternatives...
+   [Scout] Extracting candidates from 10 search results...
+   [Scout] Checking Snowflake Vector DB for known alternatives...
+       -> Logitech MX Master 4: 14 prices found.
+       -> Logitech MX Master 4: 14 prices found.
+       -> Logitech MX Master 4: 15 reviews found
+       -> Logitech G604 Lightspeed: 14 prices found.
+       -> Logitech G604 Lightspeed: 14 prices found.
+       -> Razer Naga Pro V2: 40 prices found.
+       -> Razer Naga Pro V2: 40 prices found.
+       -> Logitech G604 Lightspeed: 10 reviews found
+       -> Razer Naga Pro V2: 14 reviews found
+--- Market Scout Node: Total time 9.33s ---
+
+Found 3 candidates:
+
+[Candidate] Logitech MX Master 4
+  - Price: $257.75 (Val: $257.75 CAD)
+  - Image: https://placehold.co/400x300?text=No+Image
+  - Link: https://www.google.com/search?ibp=oshop&q=Logitech MX Master 4&prds=catalogid:13516299964666562778,headlineOfferDocid:15032956506050116721,imageDocid:13574899094173701608,rds:PC_12981617329167752456|PROD_PC_12981617329167752456,gpcid:12981617329167752456,mid:576462845453822540,pvt:hg&hl=en&gl=ca&udm=28
+  - Raw Prices: 14
+
+[Candidate] Razer Naga Pro V2
+  - Price: $130.68 (Val: $130.68 CAD)
+  - Image: https://placehold.co/400x300?text=No+Image
+  - Link: https://www.google.com/search?ibp=oshop&q=Razer Naga Pro V2&prds=catalogid:6620064775655764634,headlineOfferDocid:16721621229148176462,imageDocid:17386303293601683247,rds:PC_9421062237879336696|PROD_PC_9421062237879336696,gpcid:9421062237879336696,mid:576462878436886278,pvt:hg&hl=en&gl=ca&udm=28
+  - Raw Prices: 40
+
+[Candidate] Logitech G604 Lightspeed
+  - Price: $239.99 (Val: $239.99 CAD)
+  - Image: https://placehold.co/400x300?text=No+Image
+  - Link: https://www.google.com/search?ibp=oshop&q=Logitech G604 Lightspeed&prds=catalogid:13338727011497391333,headlineOfferDocid:9519886729067447289,imageDocid:16315350666061436358,rds:PC_14927091893078824973|PROD_PC_14927091893078824973,gpcid:14927091893078824973,mid:576462777716068592,pvt:hg&hl=en&gl=ca&udm=28
+  - Raw Prices: 14

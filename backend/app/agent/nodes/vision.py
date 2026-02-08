@@ -73,7 +73,15 @@ def node_user_intent_vision(state: AgentState) -> Dict[str, Any]:
             )
             
             prompt = """
-            Identify the main objects in this image.
+            Identify the main commercial *products* in this image.
+            
+            CRITICAL NEGATIVE CONSTRAINTS (STRICTLY ENFORCED):
+            - DO NOT DETECT PEOPLE, FACES, MEN, WOMEN, CHILDREN.
+            - DO NOT DETECT BODY PARTS (hands, arms, legs, feet, fingers).
+            - DO NOT bounding box a person holding an object; box ONLY the object itself.
+            - If an object is held, the bounding box must exclude the hand/fingers.
+            - Ignore background clutter, windows, and non-product elements.
+            
             Return a JSON object with a key "detected_objects" containing a list of objects.
             Each object should have:
             - "name": generic name of the object (e.g. "shoes", "keyboard")

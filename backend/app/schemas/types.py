@@ -19,6 +19,7 @@ class ReviewSnippet(BaseModel):
     date: Optional[str] = None
     sentiment: Optional[str] = None
     credibility_score: Optional[float] = None
+    images: List[str] = []
 
 
 class PriceOffer(BaseModel):
@@ -30,6 +31,7 @@ class PriceOffer(BaseModel):
     total_cents: Optional[int] = None
     in_stock: Optional[bool] = None
     source: str = "serpapi"
+    thumbnail: Optional[str] = None
 
 
 class SourceTrace(BaseModel):

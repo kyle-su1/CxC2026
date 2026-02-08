@@ -67,6 +67,7 @@ def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
                     price_cents=price_cents,
                     currency="CAD",
                     url=link,
+                    thumbnail=item.get("thumbnail") # Extract thumbnail
                 )
             )
 
