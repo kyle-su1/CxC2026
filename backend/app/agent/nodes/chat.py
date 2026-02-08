@@ -120,16 +120,23 @@ Return ONLY valid JSON, no markdown."""),
             
             search_criteria = json.loads(cleaned_result)
             logger.info(f"CHAT: Extracted search prefs: {search_criteria}")
+            print(f"   [Chat] 🔍 Detected preference: {search_criteria}")
             
-            # If budget was extracted, also save it to new_prefs
-            if search_criteria.get('max_budget'):
-                new_prefs['max_budget'] = search_criteria['max_budget']
-                new_prefs['price_sensitivity'] = 0.9  # User specified budget, so price-sensitive
+            # Merge search_criteria into new_prefs so they get saved to DB
+            # This ensures brands/colors are persisted, not just weights
+            if search_criteria:
+                new_prefs.update(search_criteria)
+                # Also set specific weights if budget/brands mentioned
+                if search_criteria.get('max_budget'):
+                    new_prefs['price_sensitivity'] = 0.9
+                if search_criteria.get('prefer_brands'):
+                    new_prefs['brand_reputation'] = 0.8
             
             loop_step = "market_scout_node"
             
         except Exception as e:
             logger.error(f"CHAT: Failed to extract search prefs: {e}")
+            print(f"   [Chat] ⚠️ Failed to extract preferences: {e}")
             loop_step = "market_scout_node"  # Still re-search, just without specific criteria
 
     # 4. Update Database with preferences (if any)
@@ -139,8 +146,16 @@ Return ONLY valid JSON, no markdown."""),
                 from app.models.session import Session as SessionModel
                 from app.models.user import User
                 
-                user_id = 1  # MVP hardcoded
-                if session_id:
+                # user_id = 1  # MVP hardcoded
+                state_user_id = state.get('user_id')
+                user_id = 1 # Default
+                
+                if state_user_id:
+                    try:
+                        user_id = int(state_user_id)
+                    except:
+                        pass
+                elif session_id:
                     session_obj = db.query(SessionModel).filter(SessionModel.id == session_id).first()
                     if session_obj and session_obj.user_id:
                         user_id = session_obj.user_id
@@ -152,9 +167,11 @@ Return ONLY valid JSON, no markdown."""),
                     user.preferences = current_prefs
                     db.commit()
                     logger.info(f"CHAT: Updated DB preferences for user {user_id}: {new_prefs}")
+                    print(f"   [Chat] 💾 Added to Postgres DB for User {user_id}: {new_prefs}")
                     
         except Exception as e:
             logger.error(f"CHAT: Failed to update DB preferences: {e}")
+            print(f"   [Chat] ❌ DB Update Failed: {e}")
 
     # 5. Generate Response
     from langchain_core.messages import SystemMessage, HumanMessage, AIMessage

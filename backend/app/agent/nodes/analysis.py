@@ -37,7 +37,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     research = state.get('research_data', {})
     risk = state.get('risk_report', {})
     market_scout = state.get('market_scout_data', {})
-    user_id = 1 # TODO: Get from state when Auth is fully wired across graph
+    market_scout = state.get('market_scout_data', {})
     
     # 1. Load User Preferences
     db = SessionLocal()
@@ -47,7 +47,14 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
         state_prefs = state.get('user_preferences', {})
         
         # Determine User ID - try state, then session lookup, then default
-        # user_id is hardcoded to 1 in many places for MVP
+        state_id = state.get('user_id')
+        user_id = 1
+        if state_id:
+            try:
+                user_id = int(state_id)
+            except:
+                pass
+
         db_prefs = get_user_explicit_preferences(db, user_id)
         
         # Merge explicit (State > DB)
@@ -203,6 +210,26 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             weights=final_weights,
             eco_score=sentiment_data.get('eco_score', 0.5)
         )
+        
+        # --- BRAND BOOSTING LOGIC ---
+        # Explicitly boost score if it matches user's preferred brands
+        brand_bonus = 0.0
+        matched_brand = None
+        preferred_brands = explicit_prefs.get('prefer_brands', [])
+        
+        if preferred_brands:
+            product_name_lower = alt.get('name', '').lower()
+            for brand in preferred_brands:
+                if brand.lower() in product_name_lower:
+                    # Apply a massive 20 point bonus (out of 100) to Total Score to Ensure Stickiness
+                    # This ensures preferred brands override minor price/sentiment differences
+                    brand_bonus = 20.0 
+                    score_obj.total_score += brand_bonus
+                    matched_brand = brand
+                    break
+        
+        if matched_brand:
+            print(f"   [Analysis] 🌟 BOOST APPLIED: {alt.get('name')} matches '{matched_brand}' (+{brand_bonus} pts)")
         
         return {
             "name": alt.get('name'),

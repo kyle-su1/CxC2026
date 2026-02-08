@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Auth0
     AUTH0_DOMAIN: str = "dev-g1477nceu00mfa60.us.auth0.com"
     AUTH0_CLIENT_ID: Optional[str] = None
-    AUTH0_AUDIENCE: Optional[str] = None
+    AUTH0_API_AUDIENCE: Optional[str] = None
     AUTH0_ALGORITHM: str = "RS256"
     
     # API Keys

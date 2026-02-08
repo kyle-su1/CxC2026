@@ -81,7 +81,9 @@ Only use "consider_alternatives" if there are MAJOR red flags or the score is tr
 
 === YOUR TASK ===
 Generate a JSON object strictly matching the schema below.
-IMPORTANT: Copy 'image' and 'link' fields from the data above exactly as provided.
+IMPORTANT:
+1. You MUST include up to 3 alternatives from the provided data in the 'alternatives' list. Do not filter them out unless they are duplicates.
+2. Copy 'image' and 'link' fields from the data above exactly as provided. Do not invent links.
 
 JSON OUTPUT FORMAT:
 {{
@@ -162,13 +164,12 @@ JSON OUTPUT FORMAT:
         log_debug(f"Response Node Payload: {final_payload}")
         
     except json.JSONDecodeError as e:
-        logger.error(f"JSON Parse Error: {e}")
-        logger.error(f"Raw content: {content[:500] if content else 'Empty'}")
+        print(f"   [Response] JSON Parse Error: {e}")
         # Fallback with available data
         final_payload = _build_fallback_response(analysis, alternatives_analysis, risk_report)
         
     except Exception as e:
-        logger.error(f"Response Generation Error: {e}")
+        print(f"   [Response] Error: {e}")
         # Use fallback instead of exposing error details to frontend
         final_payload = _build_fallback_response(analysis, alternatives_analysis, risk_report)
         final_payload["outcome"] = "error"
@@ -211,6 +212,7 @@ def _build_fallback_response(analysis: dict, alternatives_analysis: list, risk_r
     Build a structured response from raw data when LLM fails.
     This ensures the frontend always gets a valid response.
     """
+    print("   [Response] Using Fail-Safe Fallback Response Generator")
     main_product = analysis.get('recommended_product', 'Unknown Product')
     match_score = analysis.get('match_score', 0)
     
@@ -219,7 +221,7 @@ def _build_fallback_response(analysis: dict, alternatives_analysis: list, risk_r
     # Get details from alternatives_analysis if available
     alt_details = {a.get('name'): a for a in alternatives_analysis}
     
-    for alt in analysis.get('alternatives_ranked', [])[1:4]:
+    for alt in analysis.get('alternatives_ranked', [])[:3]:
         name = alt.get('name')
         detail = alt_details.get(name, {})
         alternatives.append({

@@ -9,6 +9,7 @@ class AgentState(TypedDict):
     user_query: str
     image_base64: str
     user_preferences: dict  # e.g. {'price': 0.8, 'quality': 0.9}
+    user_id: Optional[str] # Auth0 User ID or Internal ID
 
     # Intermediary State - Populated by nodes as we go
     

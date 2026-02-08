@@ -2,9 +2,11 @@ import os
 import base64
 import json
 import io
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
+from app.core.security import get_current_user
+from app.models.user import User
 from openai import OpenAI
 from PIL import Image
 from pillow_heif import register_heif_opener
@@ -51,7 +53,7 @@ class ImageAnalysisResponse(BaseModel):
 
 
 @router.post("/analyze-image")
-async def analyze_image(request: ImageAnalysisRequest):
+async def analyze_image(request: ImageAnalysisRequest, current_user: User = Depends(get_current_user)):
     """
     Trigger the Full Agent Workflow:
     1. Vision (Gemini 2.0 Flash)
@@ -75,6 +77,7 @@ async def analyze_image(request: ImageAnalysisRequest):
         "user_query": "Identify this product and find the best price and alternatives.",
         "image_base64": base64_data,
         "user_preferences": {},  # Default preferences
+        "user_id": str(current_user.id),  # Authenticated User ID
         "product_query": {},
         "research_data": {},
         "market_scout_data": {},
@@ -135,6 +138,7 @@ class ChatAnalyzeRequest(BaseModel):
     image_base64: str
     user_query: str
     chat_history: List[dict] = []
+    user_id: Optional[str] = None # Auth0 User ID
 
 
 class ChatAnalyzeResponse(BaseModel):
@@ -149,7 +153,7 @@ class ChatAnalyzeResponse(BaseModel):
 
 
 @router.post("/chat-analyze", response_model=ChatAnalyzeResponse)
-async def chat_analyze(request: ChatAnalyzeRequest):
+async def chat_analyze(request: ChatAnalyzeRequest, current_user: User = Depends(get_current_user)):
     """
     Chat-based targeted object analysis with FULL pipeline.
     
@@ -255,6 +259,7 @@ Return ONLY valid JSON, no markdown."""
             "user_query": f"Find the best deals for: {product_name}",
             "image_base64": base64_data,
             "user_preferences": {},
+            "user_id": str(current_user.id), # Authenticated User ID
             "product_query": {
                 "canonical_name": product_name,
                 "detected_objects": [{
@@ -333,6 +338,7 @@ class ChatFollowupRequest(BaseModel):
     thread_id: str  # Required for state persistence
     session_state: dict  # Prior analysis state (from initial chat-analyze)
     chat_history: List[dict] = []
+    user_id: Optional[str] = None # Auth0 User ID
 
 
 class ChatFollowupResponse(BaseModel):
@@ -343,7 +349,7 @@ class ChatFollowupResponse(BaseModel):
 
 
 @router.post("/chat-followup", response_model=ChatFollowupResponse)
-async def chat_followup(request: ChatFollowupRequest):
+async def chat_followup(request: ChatFollowupRequest, current_user: User = Depends(get_current_user)):
     """
     Handle follow-up questions after initial analysis.
     
@@ -364,6 +370,7 @@ async def chat_followup(request: ChatFollowupRequest):
             "user_query": request.user_query,
             "image_base64": "",  # No new image
             "user_preferences": {},
+            "user_id": str(current_user.id), # Authenticated User ID
             "chat_history": request.chat_history,
             # Restore prior analysis state
             "product_query": request.session_state.get("product_query", {}),

@@ -2,6 +2,8 @@ from typing import Dict, Any, List
 from app.agent.state import AgentState
 from app.sources.tavily_client import find_review_snippets
 from app.schemas.types import ProductQuery
+from app.db.session import SessionLocal
+from app.services.preference_service import get_user_explicit_preferences
 
 def node_market_scout(state: AgentState) -> Dict[str, Any]:
     """
@@ -27,11 +29,51 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     
     product_query_data = state.get('product_query', {})
     product_name = product_query_data.get('canonical_name') or product_query_data.get('product_name', '')
-    user_prefs = state.get('user_preferences', {})
+    product_query_data = state.get('product_query', {})
+    product_name = product_query_data.get('canonical_name') or product_query_data.get('product_name', '')
+    
+    # Load Preferences (Merge DB + State)
+    state_prefs = state.get('user_preferences', {})
+    try:
+        state_id = state.get('user_id')
+        user_id = int(state_id) if state_id else 1
+        
+        with SessionLocal() as db:
+            db_prefs = get_user_explicit_preferences(db, user_id)
+            user_prefs = {**db_prefs, **state_prefs} # State overrides DB
+            print(f"   [Scout] 💾 Accessing Database... Retrieved User Prefs: {user_prefs}")
+    except Exception as e:
+        print(f"   [Scout] Warning: Failed to load DB prefs ({e}), using state only.")
+        user_prefs = state_prefs
+
     search_criteria = state.get('search_criteria', {})  # From Chat Node (colors, brands, etc.)
+    
+    # 0. Merge Persistent DB Preferences into Search Criteria
+    # If the user has "prefer_brands" saved in DB, but not in current turn's search_criteria, add them.
+    if not search_criteria:
+        search_criteria = {}
+        
+    if 'prefer_brands' in user_prefs and 'prefer_brands' not in search_criteria:
+        search_criteria['prefer_brands'] = user_prefs['prefer_brands']
+        print(f"   [Scout] 🔄 Applied 'prefer_brands' from DB: {user_prefs['prefer_brands']}")
+        
+    if 'exclude_brands' in user_prefs and 'exclude_brands' not in search_criteria:
+        search_criteria['exclude_brands'] = user_prefs['exclude_brands']
+    
+    if 'prefer_colors' in user_prefs and 'prefer_colors' not in search_criteria:
+        search_criteria['prefer_colors'] = user_prefs['prefer_colors']
     
     if not product_name or "Error" in product_name:
         return {"market_scout_data": {"error": "No valid product to scout"}}
+
+    # Clean product name if it's too long or has garbage (e.g. from eBay titles)
+    # "OnePlus 7 Pro | Grade A | GSM Unlocked" -> "OnePlus 7 Pro"
+    clean_name = product_name.split('|')[0].split(' - ')[0].strip()
+    if len(clean_name) < 3: # Too short, revert
+        clean_name = product_name
+    
+    print(f"   [Scout] Raw Name: {product_name} -> Clean Name: {clean_name}")
+    product_name = clean_name # Use cleaned name for queries
 
     # 1. Determine Strategy based on Preferences
     # Default strategy: "Balanced" (find similar quality)
@@ -56,6 +98,8 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     
     if search_criteria:
         print(f"   [Scout] Applying search_criteria from Chat: {search_criteria}")
+    else:
+        print(f"   [Scout] No search_criteria provided. Using default balanced strategy.")
         
         # Handle color exclusions
         exclude_colors = search_criteria.get('exclude_colors', [])
