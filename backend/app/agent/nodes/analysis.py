@@ -276,7 +276,9 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "image_url": display_product.get('image_url') if display_product else None,
             "purchase_link": display_product.get('purchase_link') if display_product else None,
             "price_text": display_product.get('price_text') if display_product else "Check Price",
-            "detected_objects": [] # Populated by Vision/Lens if available, kept empty here
+            "detected_objects": [], # Populated by Vision/Lens if available, kept empty here
+            "eco_score": display_product.get('eco_score', 0.5) if display_product else 0.5,
+            "eco_notes": display_product.get('eco_notes', '') if display_product else ""
         },
         
         # PRICE ANALYSIS (Verdict)
@@ -296,7 +298,9 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
                 "reason": a['reason'],
                 "image": a.get('image_url'), # Hybrid key
                 "link": a.get('purchase_link'), # Hybrid key
-                "price_text": a.get('price_text')
+                "price_text": a.get('price_text'),
+                "eco_score": a.get('eco_score', 0.5),
+                "eco_notes": a.get('eco_notes', '')
             } 
             for a in alternatives_scored if not a.get('is_main')  # Exclude main from alternatives list
         ],
@@ -307,7 +311,9 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
                "reason": a['reason'],
                "image": a.get('image_url'),
                "link": a.get('purchase_link'),
-               "price_text": a.get('price_text')
+               "price_text": a.get('price_text'),
+               "eco_score": a.get('eco_score', 0.5),
+               "eco_notes": a.get('eco_notes', '')
             }
             for a in alternatives_scored if not a.get('is_main')
         ],

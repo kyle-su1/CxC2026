@@ -2,7 +2,7 @@
 
 A hackathon project to suggest shopping items via screenshot, scraped reviews, and user preferences.
 
-**Goal**: Visual product analysis, identification, market research, and personalized recommendations.
+**Goal**: Visual product analysis, identification, market research, price comparison, and AI-powered Eco Scores.
 
 ---
 
@@ -114,7 +114,7 @@ The system uses a **Two-Stage Pipeline** managed by **LangGraph**.
 
 **AI & APIs**
 - **Google Gemini 2.0 Flash**: Core LLM for Vision and Reasoning.
-- **Tavily AI**: Optimized search for LLMs.
+- **Tavily AI**: Optimized search for LLMs (Product & Company Sustainability Data).
 - **SerpAPI**: Google Lens and Shopping data.
 - **ImgBB**: Image hosting for Lens integration.
 

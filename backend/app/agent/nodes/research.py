@@ -53,6 +53,10 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
     offers_data = []
     eco_data = {}
     
+    # Extract brand from product name (heuristic: first word)
+    # This is a simple approximation. In a real app, an LLM call would be better.
+    brand_name = product_name.split()[0] if product_name else ""
+    
     def fetch_reviews():
         try:
             log_debug("Starting Tavily search...")
@@ -85,8 +89,19 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
         try:
             eco_start = time.time()
             result = search_eco_sustainability(product_name)
+            
+            # --- Integratrion of Brand Stats ---
+            if brand_name and len(brand_name) > 2:
+                 from app.sources.tavily_client import search_company_stats
+                 brand_stats = search_company_stats(brand_name)
+                 if brand_stats.get("found"):
+                     print(f"   [Runner] Brand stats found for {brand_name}")
+                     # Merge brand context into eco context
+                     result["eco_context"] += f"\n\nCORPORATE SUSTAINABILITY DATA ({brand_name}):\n{brand_stats.get('brand_context')}"
+            # -----------------------------------
+
             eco_time = time.time() - eco_start
-            print(f"   ⏱️  [Runner] Eco search took {eco_time:.2f}s")
+            print(f"   ⏱️  [Runner] Eco/Brand search took {eco_time:.2f}s")
             return result
         except Exception as e:
             print(f"   [Runner] Eco Search Error: {e}")

@@ -270,3 +270,76 @@ def search_eco_sustainability(product_name: str) -> Dict[str, any]:
     except Exception as e:
         print(f"   [Eco] Search Error: {e}")
         return {"eco_context": "", "found": False}
+
+
+def search_company_stats(brand_name: str) -> Dict[str, any]:
+    """
+    Search for high-level company statistics (ESG, Net Zero, B Corp).
+    """
+    # --- Check Cache ---
+    cache_key = f"tavily:brand:{hashlib.md5(brand_name.encode()).hexdigest()}"
+    cached_data = snowflake_cache_service.get(cache_key)
+    
+    if cached_data:
+        print(f"   [Brand] Cache hit for {brand_name}")
+        return cached_data
+    # -------------------
+
+    api_key = settings.TAVILY_API_KEY
+    if not api_key:
+        return {"brand_context": "", "found": False}
+
+    # Targeted query for stats
+    brand_query = f'{brand_name} company sustainability ESG score "Net Zero" "B Corp"'
+    print(f"   [Brand] Searching: {brand_query[:60]}...")
+
+    payload = {
+        "api_key": api_key,
+        "query": brand_query,
+        "search_depth": "basic",
+        "include_answer": True,
+        "max_results": 3,
+    }
+
+    try:
+        r = requests.post(TAVILY_URL, json=payload, timeout=8)
+        data = r.json()
+        
+        if data.get("error"):
+            return {"brand_context": "", "found": False}
+
+        brand_snippets = []
+        
+        if data.get("answer"):
+            brand_snippets.append(f"AI Summary: {data.get('answer')}")
+
+        for item in data.get("results", []):
+            content = item.get("content", "")
+            title = item.get("title", "")
+            if content:
+                brand_snippets.append(f"{title}: {content[:300]}")
+        
+        print(f"   [Brand] Found {len(brand_snippets)} stats")
+        
+        brand_context = "\n".join(brand_snippets[:4])
+        
+        result = {
+            "brand_context": brand_context,
+            "found": bool(brand_snippets)
+        }
+        
+        # --- Store in Cache ---
+        if result["found"]:
+            snowflake_cache_service.set(
+                cache_key=cache_key,
+                cache_type="tavily_brand",
+                params={"brand": brand_name},
+                result=result,
+                ttl_minutes=1440  # Cache brand stats for 24 hours (stats don't change often)
+            ) 
+        # ----------------------
+        
+        return result
+    except Exception as e:
+        print(f"   [Brand] Search Error: {e}")
+        return {"brand_context": "", "found": False}

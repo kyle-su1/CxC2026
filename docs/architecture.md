@@ -97,6 +97,7 @@ This phase runs two parallel agents to gather deep data.
 *   **Goal**: Gather comprehensive data on the *specific* product identified.
 *   **Agents**:
     *   **Search Agent**: Uses **Tavily API** to find listings.
+    *   **Sustainability Researcher**: Extracts Brand Name and searches for specific corporate stats (ESG, Net Zero, B Corp).
     *   **Price Checker**: Uses **SerpAPI** for pricing.
 *   **Caching**: Results cached in Redis (Tavily: 1 hour TTL, SerpAPI: 15 min TTL).
 
@@ -122,7 +123,8 @@ This phase runs two parallel agents to gather deep data.
 *   **Responsibilities**:
     1.  **Fake Review Detection**: Analyze patterns in reviews for the main product.
     2.  **Deal Verification**: Check if the "sale price" is actually a tactic.
-    3.  **Cross-Exam**: Check if the "Alternates" suggested by the Scout hold up to scrutiny.
+    3.  **Eco-Friendliness Score**: Evaluates sustainability based on materials, repairability, and **Corporate Stats** (gathered in Node 2).
+    4.  **Cross-Exam**: Check if the "Alternates" suggested by the Scout hold up to scrutiny.
 
 ### **Node 4: Analysis & Synthesis (The "Brain")**
 *   **Input**: Product Data + Contextual Scout Data + Risk Report.
@@ -164,8 +166,8 @@ This phase runs two parallel agents to gather deep data.
     *   **Scanning Overlay**: Visual scanning effect during analysis.
     *   **Interactive Bounding Boxes**: Clickable overlays for specific object identification (Google Lens style).
 *   **Right Panel**: **Agent Output & Analysis**.
-    *   **Main Product Card**: High-highlight display of the identified product with Image, Price, Trust Score, Verdict, and "Buy Now" button.
-    *   **Alternatives Grid**: Visual grid of recommended alternatives with images, prices, and "View Item" links.
+    *   **Main Product Card**: High-highlight display of the identified product with Image, Price, Trust Score, **Eco Score** (with evidence tooltip), Verdict, and "Buy Now" button.
+    *   **Alternatives Grid**: Visual grid of recommended alternatives with images, prices, **limit-check Eco Badges**, and "View Item" links.
 
 ### **Interactive Bounding Boxes**
 The frontend (`DashboardPage.jsx`) uses the `detected_objects` list from the API response to render interactive overlays on the **Left Panel**:

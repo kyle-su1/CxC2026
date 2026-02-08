@@ -61,6 +61,17 @@ const ProductModal = ({ product, onClose }) => {
                             )}
                         </div>
 
+                        {product.eco_notes && (
+                            <div className="mb-6 bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+                                <h4 className="text-xs font-bold text-green-400 uppercase mb-1 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Eco Analysis
+                                </h4>
+                                <p className="text-xs text-gray-300 leading-relaxed">
+                                    {product.eco_notes}
+                                </p>
+                            </div>
+                        )}
+
                         <div className="prose prose-invert prose-sm mb-8 flex-1 overflow-y-auto">
                             <h3 className="text-gray-400 uppercase text-xs font-bold tracking-wider mb-2">Analysis</h3>
                             <p className="text-gray-300 leading-relaxed">{product.reason || product.description || "No detailed description available."}</p>
@@ -116,7 +127,7 @@ const AlternativeCard = ({ alt, onSelect }) => {
                         Score: {Math.round(alt.score || 0)}
                     </span>
                     {alt.eco_score !== undefined && (
-                        <span className="bg-green-900/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-green-300 border border-green-500/30" title="Environmental Friendliness">
+                        <span className="bg-green-900/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-green-300 border border-green-500/30 cursor-help" title={alt.eco_notes || "Environmental Friendliness"}>
                             🌱 {Math.round((alt.eco_score || 0.5) * 100)}%
                         </span>
                     )}
@@ -518,7 +529,7 @@ const DashboardPage = () => {
                                                                     <span className="text-sm font-medium text-white block truncate">{analysisResult.price_analysis?.verdict || "N/A"}</span>
                                                                 </div>
                                                             </div>
-                                                            <div className="bg-green-900/20 rounded-lg p-3 border border-green-500/10">
+                                                            <div className="bg-green-900/20 rounded-lg p-3 border border-green-500/10 group relative">
                                                                 <span className="text-[10px] uppercase text-green-400 tracking-wider flex items-center gap-1">🌱 Eco Score</span>
                                                                 <div className="mt-1">
                                                                     <span className="text-xl font-bold text-green-300">
@@ -527,8 +538,24 @@ const DashboardPage = () => {
                                                                             : "N/A"}
                                                                     </span>
                                                                 </div>
+                                                                {/* Tooltip for Eco Notes */}
+                                                                {analysisResult.active_product?.eco_notes && (
+                                                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-black/90 border border-green-500/30 rounded text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                                                        {analysisResult.active_product.eco_notes}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+
+                                                        {/* Visible Eco Notes Block */}
+                                                        {analysisResult.active_product?.eco_notes && (
+                                                            <div className="mb-6 bg-green-900/10 border border-green-500/10 rounded-lg p-3">
+                                                                <h4 className="text-xs font-bold text-green-400 uppercase mb-1">Eco Analysis</h4>
+                                                                <p className="text-xs text-gray-400 leading-relaxed">
+                                                                    {analysisResult.active_product.eco_notes}
+                                                                </p>
+                                                            </div>
+                                                        )}
 
                                                         {analysisResult.active_product?.purchase_link ? (
                                                             <a
