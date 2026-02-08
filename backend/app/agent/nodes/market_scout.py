@@ -117,6 +117,12 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
             seen_urls.add(r.get('url'))
             unique_results.append(r)
     
+    # 4b. Extract Images from Search Results (for fallback)
+    fallback_images = []
+    for r in scout_results:
+        if r.get('images'):
+            fallback_images.extend(r.get('images'))
+            
     # 4. Extract Candidates using LLM
     print(f"   [Scout] Extracting candidates from {len(unique_results)} search results...")
     
@@ -238,9 +244,24 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                         # Get prices
                         price_offers = get_shopping_offers(temp_query, temp_trace)
                         cand['prices'] = [
-                            {"vendor": p.vendor, "price": p.price_cents / 100, "currency": p.currency, "url": p.url}
+                            {
+                                "vendor": p.vendor, 
+                                "price": p.price_cents / 100, 
+                                "currency": p.currency, 
+                                "url": p.url,
+                                "thumbnail": p.thumbnail
+                            }
                             for p in price_offers
                         ]
+                        
+                        # --- PRICE LOGGING ---
+                        try:
+                            with open("/app/logs/price_debug.log", "a", encoding="utf-8") as f:
+                                for p in price_offers:
+                                    f.write(f"Product: {name} | Price: {p.price_cents/100:.2f} {p.currency} | Vendor: {p.vendor} | URL: {p.url}\n")
+                        except Exception as log_e:
+                            print(f"       -> Logging failed: {log_e}")
+                        # ---------------------
                         
                         if price_offers:
                             # Capture Image and Link from best offer
@@ -254,14 +275,36 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                             cand['estimated_price'] = f"${median_price:.2f} CAD"
                             cand['price_text'] = f"${median_price:.2f}"
                             print(f"       -> {name}: {len(price_offers)} prices found.")
+                            print(f"       -> {name}: {len(price_offers)} prices found.")
                         else:
-                            # Fallback: Create a direct Google Shopping search link
-                            import urllib.parse
-                            encoded_name = urllib.parse.quote(name)
-                            cand['purchase_link'] = f"https://www.google.com/search?tbm=shop&q={encoded_name}"
+                            # Fallback Logic: Use Tavily data or Google Shopping Search
+                            
+                            # 1. Try to find a fallback image from Tavily results
+                            # Simple heuristic: pick the first available fallback image
+                            # In a real system, we might try to match semantic similarity or alt text
+                            if fallback_images and not cand.get('image_url'):
+                                cand['image_url'] = fallback_images[0] 
+                            
+                            # 2. Try to find a fallback link from Tavily results
+                            # Match the candidate name to a search result URL if possible
+                            fallback_link = None
+                            for r in unique_results:
+                                if name.lower() in r.get('title', '').lower():
+                                    fallback_link = r.get('url')
+                                    break
+                            
+                            if fallback_link:
+                                cand['purchase_link'] = fallback_link
+                            else:
+                                # Create Google Shopping fallback if no direct link found
+                                import urllib.parse
+                                encoded_name = urllib.parse.quote(name)
+                                cand['purchase_link'] = f"https://www.google.com/search?tbm=shop&q={encoded_name}"
+                                
                             cand['estimated_price'] = "Check Price"
                             cand['price_text'] = "Check Price"
-                            print(f"       -> {name}: No direct offers, using fallback link.")
+                            cand['image_url'] = cand.get('image_url') or "https://via.placeholder.com/150?text=No+Image" # Placeholder if no image
+                            print(f"       -> {name}: No direct offers, using fallback link/image.")
 
                         # Get reviews
                         review_snippets = find_review_snippets(temp_query, temp_trace)
@@ -294,7 +337,20 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
         print(f"   [Scout] LLM Extraction skipped or failed: {e}")
         # Fallback: just return empty candidates
         pass
-
+        
+    # --- FINAL DATA GUARANTEE ---
+    # Ensure all candidates have the required keys for frontend display
+    for cand in candidates:
+        if not cand.get('image_url'):
+            cand['image_url'] = "https://placehold.co/400x300?text=No+Image"
+        if not cand.get('purchase_link'):
+             # Create Google Shopping fallback
+            import urllib.parse
+            encoded_name = urllib.parse.quote(cand.get('name', 'Product'))
+            cand['purchase_link'] = f"https://www.google.com/search?tbm=shop&q={encoded_name}"
+        if not cand.get('price_text'):
+            cand['price_text'] = "Check Price"
+            
     total_time = time.time() - start_time
     print(f"--- Market Scout Node: Total time {total_time:.2f}s ---")
     log_debug("Market Scout Node Completed")

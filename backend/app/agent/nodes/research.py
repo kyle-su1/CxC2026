@@ -85,14 +85,42 @@ def node_discovery_runner(state: AgentState) -> Dict[str, Any]:
         import urllib.parse
         encoded_name = urllib.parse.quote(product_name)
         fallback_url = f"https://www.google.com/search?tbm=shop&q={encoded_name}"
+        
+        # Try to find an image from reviews if available
+        fallback_image = None
+        for r in reviews_data:
+             if r.get('images'):
+                 fallback_image = r.get('images')[0]
+                 break
+                 
         offers_data.append({
             "vendor": "Google Shopping Search",
             "price": 0,
             "currency": "CAD",
             "url": fallback_url,
-            "thumbnail": None
+            "thumbnail": fallback_image # Use Tavily image if available
         })
-        print(f"   [Runner] No direct offers, added fallback link.")
+        print(f"   [Runner] No direct offers, added fallback link (Image: {'Yes' if fallback_image else 'No'}).")
+        
+    # --- PRICE LOGGING ---
+    try:
+        with open("/app/logs/price_debug.log", "a", encoding="utf-8") as f:
+            for o in offers_data:
+                # Handle cases where 'price_cents' is from PriceOffer.dict()
+                # The fallback above uses 'price': 0 directly, so check both
+                price_cents = o.get('price_cents', 0)
+                if price_cents == 0:
+                    price_cents = o.get('price', 0) * 100  # Fallback may use 'price' in dollars
+                
+                p_val = price_cents / 100.0  # Convert to dollars for display
+                curr = o.get('currency', 'CAD')
+                vendor = o.get('vendor', 'Unknown')
+                url = o.get('url', 'No URL')
+                
+                f.write(f"Product: {product_name} (Main) | Price: {p_val:.2f} {curr} | Vendor: {vendor} | URL: {url}\n")
+    except Exception as log_e:
+        print(f"       -> Logging failed: {log_e}")
+    # ---------------------
     
     # 3. Aggregate Data
     research_data = {

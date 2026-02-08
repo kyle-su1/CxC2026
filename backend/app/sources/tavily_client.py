@@ -39,6 +39,7 @@ def find_review_snippets(product: ProductQuery, trace: list) -> List[ReviewSnipp
             "api_key": api_key,
             "query": q,
             "search_depth": "basic",
+            "include_images": True,
         }
 
         try:
@@ -48,6 +49,9 @@ def find_review_snippets(product: ProductQuery, trace: list) -> List[ReviewSnipp
             if data.get("error"):
                  trace.append({"step": "tavily", "detail": f"API Error: {data.get('error')}"})
                  continue
+            
+            # Extract images from the main response if available
+            main_images = data.get("images", [])
 
             for item in data.get("results", []):
                 url = item.get("url")
@@ -58,6 +62,7 @@ def find_review_snippets(product: ProductQuery, trace: list) -> List[ReviewSnipp
                         source=item.get("title") or "",
                         url=url,
                         snippet=item.get("content") or "",
+                        images=main_images # Attach general search images to snippets for now as fallback context
                     )
                 )
         except Exception as e:
@@ -101,7 +106,8 @@ def search_market_context(query: str) -> List[Dict[str, str]]:
         "api_key": api_key,
         "query": query,
         "search_depth": "basic",
-        "include_answer": True, # Get Tavily's generated answer if possible
+        "include_answer": True,
+        "include_images": True, # Request images from Tavily
     }
 
     try:
@@ -116,12 +122,30 @@ def search_market_context(query: str) -> List[Dict[str, str]]:
         if data.get("answer"):
             results.append({"title": "Tavily AI Summary", "url": "", "content": data.get("answer")})
 
+        # Process main results
         for item in data.get("results", []):
              results.append({
                  "title": item.get("title", ""),
                  "url": item.get("url", ""),
                  "content": item.get("content", "")
              })
+             
+        # Extract images if available (usually in a separate 'images' key or inside results)
+        # Tavily response format for images: {"images": ["url1", "url2", ...]}
+        images = data.get("images", [])
+        
+        # Attach images to the FIRST result just to pass them along, 
+        # or we can return them separately. 
+        # For simplicity in the current architecture, we'll embed them in a special result entry
+        # or rely on the fact that we return a list of dicts.
+        # Let's add a special entry for images so Market Scout can find them.
+        if images:
+            results.append({
+                "title": "Related Images",
+                "url": "",
+                "content": "",
+                "images": images # List of URL strings
+            })
         
         # --- Store in Cache ---
         if results:
