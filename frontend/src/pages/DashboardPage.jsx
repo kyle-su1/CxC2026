@@ -221,6 +221,7 @@ const DashboardPage = () => {
     const [threadId, setThreadId] = useState(null);
     const [sessionState, setSessionState] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [isRefining, setIsRefining] = useState(false); // Visual loop state
 
     // Poll backend health
     useEffect(() => {
@@ -268,9 +269,20 @@ const DashboardPage = () => {
         setChatMessages([...newMessages, { role: 'assistant', content: null, isThinking: true }]);
 
         // Animate agent steps (simulated progress)
+        let seconds = 0;
         const stepInterval = setInterval(() => {
-            setAgentStep(prev => (prev < 4 ? prev + 1 : prev));
-        }, 2500); // ~10s total for 4 steps
+            seconds++;
+            if (seconds === 2) setAgentStep(1);
+            if (seconds === 5) setAgentStep(2);
+            if (seconds === 9) setAgentStep(3);
+
+            // Loop Trigger (>14s means Veto likely)
+            if (seconds === 14) {
+                setIsRefining(true);
+                setAgentStep(2);
+            }
+            if (seconds === 20) setAgentStep(3);
+        }, 1000);
 
         try {
             const token = await getAccessTokenSilently();
@@ -332,6 +344,7 @@ const DashboardPage = () => {
             }
 
             clearInterval(stepInterval);
+            setIsRefining(false);
             setAgentStep(5); // Complete
 
             // Replace thinking with AI response
@@ -504,32 +517,62 @@ const DashboardPage = () => {
                             {/* VISUAL RESULTS */}
                             {/* VISUAL RESULTS REMOVED (Moved to Left Panel) */}
 
+                            {/* --- DEEP SEARCH NOTIFICATION --- */}
+                            {analysisResult && analysisResult.was_refined && (
+                                <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-center gap-4 animate-fade-in relative overflow-hidden group">
+                                    {/* Background glow */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                    <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400 shrink-0 flex items-center justify-center">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-2">
+                                            Deep Search Activated
+                                            <span className="text-[10px] bg-indigo-500/20 px-1.5 py-0.5 rounded text-indigo-300 border border-indigo-500/20">Auto-Refined</span>
+                                        </h4>
+                                        <p className="text-sm text-gray-400 mt-1 leading-relaxed">
+                                            {analysisResult.refinement_context || analysisResult.refinement_reason || "Initial results didn't meet our quality standards, so we performed an extra search cycle to find better options."}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {analysisResult ? (
                                 <div className="animate-fade-in space-y-8">
                                     {/* --- MAIN PRODUCT CARD --- */}
                                     <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
                                         <div className="p-6">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide border ${analysisResult.outcome === 'highly_recommended'
-                                                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                                    : analysisResult.outcome === 'recommended'
-                                                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                                    }`}>
-                                                    {analysisResult.outcome === 'highly_recommended'
-                                                        ? 'HIGHLY RECOMMENDED'
+                                            {/* 1. Header Row - Full Width */}
+                                            <div className="flex items-start justify-between gap-4 mb-6">
+                                                <h2 className="text-2xl font-bold text-white leading-tight">
+                                                    {analysisResult.identified_product || "Unknown Product"}
+                                                </h2>
+                                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                                    <div className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide border whitespace-nowrap ${analysisResult.outcome === 'highly_recommended'
+                                                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
                                                         : analysisResult.outcome === 'recommended'
-                                                            ? 'RECOMMENDED'
-                                                            : 'CONSIDER ALTERNATIVES'}
+                                                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                                        }`}>
+                                                        {analysisResult.outcome === 'highly_recommended'
+                                                            ? 'HIGHLY RECOMMENDED'
+                                                            : analysisResult.outcome === 'recommended'
+                                                                ? 'RECOMMENDED'
+                                                                : 'CONSIDER ALTERNATIVES'}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">Confidence: {analysisResult.confidence ? Math.round(analysisResult.confidence * 100) : 88}%</span>
                                                 </div>
-                                                <span className="text-xs text-gray-400">Confidence: {analysisResult.confidence ? Math.round(analysisResult.confidence * 100) : 88}%</span>
                                             </div>
 
-                                            <div className="flex flex-col gap-6">
-                                                {/* Product Info Helper */}
-                                                <div className="flex flex-col md:flex-row gap-6">
-                                                    {/* Main Image */}
-                                                    <div className="w-full md:w-1/3 aspect-square rounded-xl bg-black/40 border border-white/10 overflow-hidden relative group">
+                                            <div className="flex flex-col md:flex-row gap-8">
+
+                                                {/* LEFT COLUMN - Visual Anchor (Image) + Key Stats */}
+                                                <div className="w-full md:w-1/3 flex flex-col gap-6">
+                                                    {/* Image */}
+                                                    <div className="aspect-[4/5] rounded-xl bg-black/40 border border-white/10 overflow-hidden relative group w-full">
                                                         <SafeImage
                                                             src={analysisResult.active_product?.image_url || analyzedImage}
                                                             alt="Main Product"
@@ -549,58 +592,61 @@ const DashboardPage = () => {
                                                         )}
                                                     </div>
 
-                                                    {/* Details Column */}
-                                                    <div className="flex-1">
-                                                        <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
-                                                            {analysisResult.identified_product || "Unknown Product"}
-                                                        </h2>
-                                                        <p className="text-gray-400 text-sm leading-relaxed mb-6 border-l-2 border-white/10 pl-4 py-1">
-                                                            {analysisResult.summary || "No summary available."}
-                                                        </p>
-
-                                                        <div className="grid grid-cols-3 gap-4 mb-6">
-                                                            <div className="bg-black/20 rounded-lg p-3">
-                                                                <span className="text-[10px] uppercase text-gray-500 tracking-wider">Best Price</span>
-                                                                <div className="flex items-baseline gap-1 mt-1">
-                                                                    <span className="text-xl font-bold text-white">
-                                                                        {analysisResult.active_product?.price_text || "Check Price"}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="bg-black/20 rounded-lg p-3">
-                                                                <span className="text-[10px] uppercase text-gray-500 tracking-wider">Verdict</span>
-                                                                <div className="mt-1">
-                                                                    <span className="text-sm font-medium text-white block truncate">{analysisResult.price_analysis?.verdict || "N/A"}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="bg-green-900/20 rounded-lg p-3 border border-green-500/10 group relative">
-                                                                <span className="text-[10px] uppercase text-green-400 tracking-wider flex items-center gap-1">🌱 Eco Score</span>
-                                                                <div className="mt-1">
-                                                                    <span className="text-xl font-bold text-green-300">
-                                                                        {analysisResult.active_product?.eco_score !== undefined
-                                                                            ? `${Math.round(analysisResult.active_product.eco_score * 100)}%`
-                                                                            : "N/A"}
-                                                                    </span>
-                                                                </div>
-                                                                {/* Tooltip for Eco Notes */}
-                                                                {analysisResult.active_product?.eco_notes && (
-                                                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-black/90 border border-green-500/30 rounded text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                                                                        {analysisResult.active_product.eco_notes}
-                                                                    </div>
-                                                                )}
+                                                    {/* Key Stats - Vertical Stack */}
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="bg-black/20 rounded-lg p-3">
+                                                            <span className="text-[10px] uppercase text-gray-500 tracking-wider w-full block text-left">Best Price</span>
+                                                            <div className="flex items-baseline gap-1 mt-1">
+                                                                <span className="text-xl font-bold text-white truncate block w-full text-left">
+                                                                    {analysisResult.active_product?.price_text || "Check Price"}
+                                                                </span>
                                                             </div>
                                                         </div>
-
-                                                        {/* Visible Eco Notes Block */}
-                                                        {analysisResult.active_product?.eco_notes && (
-                                                            <div className="mb-6 bg-green-900/10 border border-green-500/10 rounded-lg p-3">
-                                                                <h4 className="text-xs font-bold text-green-400 uppercase mb-1">Eco Analysis</h4>
-                                                                <p className="text-xs text-gray-400 leading-relaxed">
-                                                                    {analysisResult.active_product.eco_notes}
-                                                                </p>
+                                                        <div className="bg-black/20 rounded-lg p-3">
+                                                            <span className="text-[10px] uppercase text-gray-500 tracking-wider w-full block text-left">Verdict</span>
+                                                            <div className="mt-1">
+                                                                <span className="text-sm font-medium text-white block truncate text-left">{analysisResult.price_analysis?.verdict || "N/A"}</span>
                                                             </div>
-                                                        )}
+                                                        </div>
+                                                        <div className="bg-green-900/20 rounded-lg p-3 border border-green-500/10 group relative">
+                                                            <span className="text-[10px] uppercase text-green-400 tracking-wider flex items-center gap-1 w-full text-left">🌱 Eco Score</span>
+                                                            <div className="mt-1">
+                                                                <span className="text-xl font-bold text-green-300 block text-left">
+                                                                    {analysisResult.active_product?.eco_score !== undefined
+                                                                        ? `${Math.round(analysisResult.active_product.eco_score * 100)}%`
+                                                                        : "N/A"}
+                                                                </span>
+                                                            </div>
+                                                            {/* Tooltip for Eco Notes */}
+                                                            {analysisResult.active_product?.eco_notes && (
+                                                                <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-black/90 border border-green-500/30 rounded text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                                                    {analysisResult.active_product.eco_notes}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
 
+                                                {/* RIGHT COLUMN - Information Stack */}
+                                                <div className="flex-1 flex flex-col min-w-0">
+
+                                                    {/* Summary Section */}
+                                                    <p className="text-gray-400 text-sm leading-relaxed mb-8 border-l-2 border-white/10 pl-4 py-1">
+                                                        {analysisResult.summary || "No summary available."}
+                                                    </p>
+
+                                                    {/* Eco Analysis Section */}
+                                                    {analysisResult.active_product?.eco_notes && (
+                                                        <div className="mb-8 bg-green-900/10 border border-green-500/10 rounded-lg p-4">
+                                                            <h4 className="text-xs font-bold text-green-400 uppercase mb-2">Eco Analysis</h4>
+                                                            <p className="text-xs text-gray-400 leading-relaxed">
+                                                                {analysisResult.active_product.eco_notes}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Buy Now Button (Bottom aligned) */}
+                                                    <div className="mt-auto pt-2">
                                                         {analysisResult.active_product?.purchase_link ? (
                                                             <a
                                                                 href={analysisResult.active_product.purchase_link}
@@ -656,7 +702,7 @@ const DashboardPage = () => {
                                     </div>
                                 </div>
                             ) : isChatAnalyzing ? (
-                                <AgentStatusDisplay activeStep={agentStep} />
+                                <AgentStatusDisplay activeStep={agentStep} isRefining={isRefining} />
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-12">
                                     <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-2 group-hover:bg-white/10 transition-colors">

@@ -120,7 +120,15 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
 
     # 2. Construct Queries with filters applied
     queries = []
-    if visual_attrs:
+    
+    # Check for Veto Feedback Loop (Priority)
+    feedback_query = state.get('skeptic_feedback_query')
+    if feedback_query:
+        print(f"   [Scout] 🔄 Improving search with Veto Feedback: '{feedback_query}'")
+        queries = [feedback_query] 
+        # Add a variation just in case
+        queries.append(f"{feedback_query} review")
+    elif visual_attrs:
         queries.append(f"{search_modifiers[0]} to {product_name} {visual_attrs}{color_filter}{brand_filter}{style_filter} 2026")
         queries.append(f"similar {visual_attrs} like {product_name}{color_filter}{brand_filter}")
     else:     
@@ -144,8 +152,8 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
     search_start = time.time()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_to_query = {executor.submit(search_market_context, q): q for q in queries[:2]} # Limit to 2 queries
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_query = {executor.submit(search_market_context, q): q for q in queries} # Run all queries
         for future in as_completed(future_to_query):
             try:
                 # Add timeout to search
@@ -173,7 +181,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     # 4. Extract Candidates using LLM
     print(f"   [Scout] Extracting candidates from {len(unique_results)} search results...")
     
-    context_text = "\n".join([f"- {r.get('title')}: {r.get('content')}" for r in unique_results[:8]]) # Limit context
+    context_text = "\n".join([f"- {r.get('title')}: {r.get('content')}" for r in unique_results[:25]]) # Expanded context
     
     from langchain_google_genai import ChatGoogleGenerativeAI
     from app.core.config import settings
@@ -183,7 +191,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     
     prompt = f"""You are a Market Scout. 
     Product: {product_name}
-    Goal: Find 3 best {search_modifiers[0]} products.
+    Goal: Find 10 best {search_modifiers[0]} products.
     
     Search Context:
     {context_text}
@@ -240,7 +248,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
             query_vector = embeddings.embed_query(enhanced_query)
             
             # Search Snowflake
-            vector_results = snowflake_vector_service.search_similar_products(query_vector, limit=2)
+            vector_results = snowflake_vector_service.search_similar_products(query_vector, limit=10)
             
             if vector_results:
                 print(f"   [Scout] Found {len(vector_results)} matches in Snowflake.")
@@ -347,16 +355,11 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                             cand['image_url'] = getattr(best_offer, 'thumbnail', None)
                             cand['purchase_link'] = best_offer.url
                             
-                            sorted_prices = sorted([p.price_cents for p in valid_offers])
-                            median_idx = len(sorted_prices) // 2
-                            median_price = sorted_prices[median_idx] / 100
-                            
-                            # Use currency from best offer or default to CAD
-                            currency_code = best_offer.currency if best_offer.currency else "CAD"
-                            
-                            cand['estimated_price'] = f"${median_price:.2f} {currency_code}"
-                            cand['price_text'] = f"${median_price:.2f}"
-                            print(f"       -> {name}: {len(valid_offers)} valid prices found.")
+                            # Use Best Available Price (First Offer) to match Main Product logic
+                            best_offer = valid_offers[0]
+                            cand['estimated_price'] = f"${best_offer.price_cents / 100:.2f} {best_offer.currency or 'CAD'}"
+                            cand['price_text'] = f"${best_offer.price_cents / 100:.2f}"
+                            print(f"       -> {name}: {len(valid_offers)} valid prices found. Best: {cand['price_text']}")
                             print(f"       -> {name}: {len(valid_offers)} valid prices found.")
                         else:
                             # Fallback Logic: Use Tavily data or Google Shopping Search
@@ -396,10 +399,10 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                         print(f"       -> Error enriching {name}: {inner_e}")
 
                 # Run enrichment in parallel, limit to 2 to avoid API rate limits
-                # Latency Optimization: Limit to top 2 candidates total to prevent massive fan-out
+                # Latency Optimization: Limit to top 10 candidates total
                 enrichment_start = time.time()
-                candidates_to_process = candidates[:2]
-                with ThreadPoolExecutor(max_workers=2) as executor:
+                candidates_to_process = candidates[:10]
+                with ThreadPoolExecutor(max_workers=5) as executor:
                     futures = [executor.submit(enrich_candidate, cand) for cand in candidates_to_process]
                     for future in as_completed(futures):
                         try:
@@ -444,7 +447,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
         "market_scout_data": {
             "strategy": search_modifiers[0],
             "raw_search_results": unique_results,
-            "candidates": candidates[:2]  # Only return enriched candidates
+            "candidates": candidates[:10]  # Only return enriched candidates
         },
         "node_timings": existing_timings
     }
