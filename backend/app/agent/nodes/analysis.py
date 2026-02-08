@@ -6,6 +6,7 @@ from app.agent.scoring import calculate_weighted_score
 from app.agent.skeptic import SkepticAgent
 from app.core.config import settings
 import logging
+import time
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -243,106 +244,111 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     market_avg = sum(all_prices) / len(all_prices) if all_prices else 0.0
     print(f"   [Analysis] Market Average Price: ${market_avg:.2f}")
 
-    def process_candidate(alt):
-        from app.agent.skeptic import Review, SkepticAgent
-        # Initialize agent INSIDE the thread/process to avoid pickling issues with gRPC
-        local_skeptic_agent = SkepticAgent(model_name=settings.MODEL_ANALYSIS)
-
-        # Run Skeptic on alternative (Quantitative)
-        reviews_data = alt.get('reviews', [])
-        # Convert to Review objects
-        valid_reviews = []
-        for r in reviews_data:
-            try:
-                # Map ReviewSnippet fields to Review model
-                review_dict = {
-                    "source": r.get("source", "Unknown"),
-                    "text": r.get("snippet", "") or r.get("text", ""),
-                    "rating": r.get("rating"),
-                    "date": r.get("date")
-                }
-                valid_reviews.append(Review(**review_dict))
-            except Exception as e:
-                # logger.warning(f"Skipping review: {e}")
-                pass
+    # --- BATCH OPTIMIZATION: Process all candidates in one (or two) LLM calls ---
+    from app.agent.skeptic import SkepticAgent
+    agent = SkepticAgent(model_name=settings.MODEL_ANALYSIS)
+    
+    # 1. Split Main Product and Alternatives
+    main_candidate = next((a for a in alternatives if a.get('is_main')), None)
+    other_candidates = [a for a in alternatives if not a.get('is_main')]
+    
+    # 2. Analyze Main Product (Detailed)
+    # We use Node 3 risk report if available to avoid a third LLM call
+    if main_candidate:
+        print(f"   [Analysis] Processing Main Product: {main_candidate['name']}")
+        main_reviews = main_candidate.get('reviews', [])[:5] # Limit to 5
         
-        # Optimization: Limit to top 5 reviews to reduce LLM latency and token usage
-        valid_reviews = valid_reviews[:5]
-        
-        sentiment_result = local_skeptic_agent.analyze_reviews(alt.get('name'), valid_reviews, eco_context)
-        sentiment_data = sentiment_result.model_dump()
-        
-        # Extract features for scoring
-        prices_list = alt.get('prices', [])
-        price_str = prices_list[0].get('price', 0) if prices_list else 0
-        try:
-            price = float(price_str)
-        except:
-            price = 0.0
-            
+        # Reuse Node 3 Risk Report if Trust Score is present
+        if risk and 'trust_score' in risk:
+             print(f"   [Analysis] ♻️ Reusing Risk Report from Node 3 for {main_candidate['name']}")
+             # Map Risk Report to Sentiment Data
+             main_sentiment = {
+                 "summary": risk.get('summary', "Found through visual search."),
+                 "trust_score": risk.get('trust_score', 7.0),
+                 "sentiment_score": risk.get('sentiment_score', 0.5), # Default or extract
+                 "eco_score": risk.get('eco_score', 0.5),
+                 "eco_notes": risk.get('eco_notes', "Analysis based on product category."),
+                 "verdict": risk.get('verdict', "Neutral assessment")
+             }
+        else:
+             # Fallback: Individual analysis for main product
+             from app.agent.skeptic import Review
+             valid_reviews = []
+             for r in main_reviews:
+                 try:
+                     valid_reviews.append(Review(source=r.get("source", "Unknown"), text=r.get("snippet", "") or r.get("text", ""), rating=r.get("rating"), date=r.get("date")))
+                 except: pass
+             
+             sentiment_result = agent.analyze_reviews(main_candidate['name'], valid_reviews, eco_context)
+             main_sentiment = sentiment_result.model_dump()
+             
+        # Create full candidate object for main product
+        price = main_candidate.get('prices', [{}])[0].get('price', 0)
         score_obj = calculate_weighted_score(
-            trust_score=sentiment_data.get('trust_score', 5.0),
-            sentiment_score=sentiment_data.get('sentiment_score', 0.0),
+            trust_score=main_sentiment.get('trust_score', 5.0),
+            sentiment_score=main_sentiment.get('sentiment_score', 0.0),
             price_val=price,
             market_avg=market_avg, 
             weights=final_weights,
-            eco_score=sentiment_data.get('eco_score', 0.5)
+            eco_score=main_sentiment.get('eco_score', 0.5)
         )
         
-        # --- BRAND BOOSTING LOGIC ---
-        # Explicitly boost score if it matches user's preferred brands
-        brand_bonus = 0.0
-        matched_brand = None
-        preferred_brands = explicit_prefs.get('prefer_brands', [])
-        
-        if preferred_brands:
-            product_name_lower = alt.get('name', '').lower()
-            for brand in preferred_brands:
-                if brand.lower() in product_name_lower:
-                    # Apply a massive 50 point bonus (out of 100) to Total Score to Ensure Stickiness
-                    # This ensures preferred brands override almost anything else
-                    brand_bonus = 50.0 
-                    score_obj.total_score += brand_bonus
-                    matched_brand = brand
-                    break
-        
-        if matched_brand:
-            print(f"   [Analysis] 🌟 BOOST APPLIED: {alt.get('name')} matches '{matched_brand}' (+{brand_bonus} pts)")
-        
-        return {
-            "name": alt.get('name'),
+        main_scored = {
+            "name": main_candidate['name'],
             "score_details": score_obj.model_dump(),
-            "sentiment_summary": sentiment_data.get('summary'),
-            "reason": alt.get('reason'),
-            "image_url": alt.get('image_url'),          # Standard backend key
-            "purchase_link": alt.get('purchase_link'),   # Standard backend key
-            "image": alt.get('image_url'),          # Mapped for frontend (Alternatives)
-            "link": alt.get('purchase_link'),       # Mapped for frontend (Alternatives)
-            "price_text": alt.get('price_text'),    # Pass through for frontend
-            "is_main": alt.get('is_main', False),       # Pass through for identification
-            "price_val": price,                          # Pass through for display
-            "eco_score": adjust_eco_score(sentiment_data.get('eco_score', 0.5), alt.get('name', '')),  # Adjusted eco score
-            "eco_notes": sanitize_eco_notes(sentiment_data.get('eco_notes', ''), alt.get('name', ''), bool(eco_context))  # Sanitized eco notes
+            "sentiment_summary": main_sentiment.get('summary'),
+            "reason": main_candidate.get('reason'),
+            "image_url": main_candidate.get('image_url'),
+            "purchase_link": main_candidate.get('purchase_link'),
+            "is_main": True,
+            "eco_score": adjust_eco_score(main_sentiment.get('eco_score', 0.5), main_candidate['name']),
+            "eco_notes": sanitize_eco_notes(main_sentiment.get('eco_notes', ''), main_candidate['name'], bool(eco_context))
         }
+        alternatives_scored.append(main_scored)
 
-    # Execute in parallel
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import time
-
-    start_time = time.time()
-    print(f"   [Analysis] Processing {len(alternatives)} candidates in parallel...")
-    
-    # Reduce max_workers to 5 to avoid hitting Gemini Rate Limits (RPM) which cause exponential backoff
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_alt = {executor.submit(process_candidate, alt): alt for alt in alternatives}
-        for future in as_completed(future_to_alt):
+    # 3. Analyze Alternatives (BATCH)
+    if other_candidates:
+        print(f"   [Analysis] 🚀 Batch Analyzing {len(other_candidates)} alternatives...")
+        batch_results = agent.batch_analyze_alternatives(other_candidates, eco_context)
+        
+        for i, alt in enumerate(other_candidates):
             try:
-                result = future.result(timeout=20)
-                alternatives_scored.append(result)
-            except Exception as exc:
-                alt = future_to_alt[future]
-                print(f"   [Analysis] Error processing {alt.get('name')}: {exc}")
-                log_debug(f"Error processing {alt.get('name')}: {exc}")
+                # Use results from batch call (order matches)
+                sentiment_data = batch_results[i].model_dump() if i < len(batch_results) else {}
+                
+                price = alt.get('prices', [{}])[0].get('price', 0)
+                score_obj = calculate_weighted_score(
+                    trust_score=sentiment_data.get('trust_score', 5.0),
+                    sentiment_score=sentiment_data.get('sentiment_score', 0.0),
+                    price_val=price,
+                    market_avg=market_avg, 
+                    weights=final_weights,
+                    eco_score=sentiment_data.get('eco_score', 0.5)
+                )
+                
+                # Boost if matched brand
+                product_name_lower = alt.get('name', '').lower()
+                preferred_brands = explicit_prefs.get('prefer_brands', [])
+                for brand in preferred_brands:
+                    if brand.lower() in product_name_lower:
+                        score_obj.total_score += 50.0 
+                        break
+
+                alternatives_scored.append({
+                    "name": alt.get('name'),
+                    "score_details": score_obj.model_dump(),
+                    "sentiment_summary": sentiment_data.get('summary'),
+                    "reason": alt.get('reason'),
+                    "image_url": alt.get('image_url'),
+                    "purchase_link": alt.get('purchase_link'),
+                    "is_main": False,
+                    "eco_score": adjust_eco_score(sentiment_data.get('eco_score', 0.5), alt.get('name', '')),
+                    "eco_notes": sanitize_eco_notes(sentiment_data.get('eco_notes', ''), alt.get('name', ''), bool(eco_context))
+                })
+            except Exception as e:
+                print(f"   [Analysis] Error processing alternative {alt.get('name')}: {e}")
+
+    start_time = time.time() # Just for reference in total time
 
     # Sort by Total Score (for alternatives ranking)
     alternatives_scored.sort(key=lambda x: x['score_details']['total_score'], reverse=True)

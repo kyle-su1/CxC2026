@@ -27,6 +27,11 @@ def node_merge_parallel(state: AgentState) -> Dict[str, Any]:
 def node_fan_out(state: AgentState) -> Dict[str, Any]:
     return {}
 
+# Discovery Join Node to synchronize parallel research and market scout
+def node_discovery_join(state: AgentState) -> Dict[str, Any]:
+    print("--- Discovery Join: Synchronizing Research + Market Scout ---")
+    return {}
+
 # 1. Define the Graph
 workflow = StateGraph(AgentState)
 
@@ -35,6 +40,7 @@ workflow.add_node("router_node", node_router)
 workflow.add_node("vision_node", node_user_intent_vision)
 workflow.add_node("research_node", node_discovery_runner)
 workflow.add_node("market_scout_node", node_market_scout)
+workflow.add_node("discovery_join_node", node_discovery_join) # New Join Node
 workflow.add_node("chat_node", node_chat)
 workflow.add_node("veto_node", node_skeptic_veto) # New Veto Check Node
 workflow.add_node("parallel_start_node", node_fan_out) # New Branch Node
@@ -103,23 +109,25 @@ workflow.add_conditional_edges(
 def route_vision(state: AgentState):
     if state.get("detect_only"):
         return END
-    # Sequential: Vision -> Research -> Market Scout
-    return "research_node"
+    # Fan Out: Parallel Research and Market Scout
+    return ["research_node", "market_scout_node"]
 
 workflow.add_conditional_edges(
     "vision_node",
     route_vision,
     {
         "research_node": "research_node",
+        "market_scout_node": "market_scout_node",
         END: END
     }
 )
 
-# Research -> Market Scout
-workflow.add_edge("research_node", "market_scout_node")
+# discovery branches -> Join Node
+workflow.add_edge("research_node", "discovery_join_node")
+workflow.add_edge("market_scout_node", "discovery_join_node")
 
-# Market Scout -> VETO CHECK (New Step)
-workflow.add_edge("market_scout_node", "veto_node")
+# Join -> VETO CHECK
+workflow.add_edge("discovery_join_node", "veto_node")
 
 # Veto Node -> Conditional (Loop or Proceed)
 def route_veto_result(state: AgentState):

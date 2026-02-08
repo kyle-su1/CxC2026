@@ -308,34 +308,34 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                     # --- ENRICHMENT LOGIC ---
                     # 1. Try Google Shopping (SerpAPI) first for best prices/images
                     try:
-                            # Construct a more specific query with category
-                            search_query = f"{name} {category}".strip()
-                            temp_query = ProductQuery(canonical_name=search_query)
-                            temp_trace = []
-                            
-                            # Get prices
-                            price_offers = get_shopping_offers(temp_query, temp_trace)
+                        # Construct a more specific query with category
+                        search_query = f"{name} {category}".strip()
+                        temp_query = ProductQuery(canonical_name=search_query)
+                        temp_trace = []
+                        
+                        # Get prices
+                        price_offers = get_shopping_offers(temp_query, temp_trace)
 
-                            # Filter out accessories/parts based on title
-                            valid_offers = []
-                            if price_offers:
-                                bad_keywords = ["lamp", "bulb", "remote", "mount", "bracket", "case", "bag", "filter", "adapter", "cable", "part", "replacement", "stand", "ceiling", "screen"]
-                                
-                                for p in price_offers:
-                                    title_lower = (p.title or "").lower()
-                                    if not any(kw in title_lower for kw in bad_keywords):
-                                        valid_offers.append(p)
-                                    else:
-                                        print(f"       -> Skipped accessory: {p.title}")
-                                        
-                            # Fallback to all offers if filtering is too aggressive
-                            if not valid_offers and price_offers:
-                                valid_offers = price_offers
-                                print(f"       -> Filtering removed all offers, reverting to original list.")
-                        except Exception as e:
-                             print(f"       -> Enrichment API failed: {e}")
-                             price_offers = []
-                             valid_offers = []
+                        # Filter out accessories/parts based on title
+                        valid_offers = []
+                        if price_offers:
+                            bad_keywords = ["lamp", "bulb", "remote", "mount", "bracket", "case", "bag", "filter", "adapter", "cable", "part", "replacement", "stand", "ceiling", "screen"]
+                            
+                            for p in price_offers:
+                                title_lower = (p.title or "").lower()
+                                if not any(kw in title_lower for kw in bad_keywords):
+                                    valid_offers.append(p)
+                                else:
+                                    print(f"       -> Skipped accessory: {p.title}")
+                                    
+                        # Fallback to all offers if filtering is too aggressive
+                        if not valid_offers and price_offers:
+                            valid_offers = price_offers
+                            print(f"       -> Filtering removed all offers, reverting to original list.")
+                    except Exception as e:
+                        print(f"       -> Enrichment API failed: {e}")
+                        price_offers = []
+                        valid_offers = []
                     
                     try:
                         if not is_retry: # Only process offers if we fetched them

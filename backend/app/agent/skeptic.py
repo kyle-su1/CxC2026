@@ -28,6 +28,9 @@ class ReviewSentiment(BaseModel):
     cons: List[str] = Field(default_factory=list, description="Key flaws mentioned by real users")
     verdict: str = Field(..., description="One-line final verdict (e.g., 'Solid buy', 'Avoid - Likely scams', 'Good but overpriced')")
 
+class BatchReviewSentiment(BaseModel):
+    assessments: List[ReviewSentiment] = Field(..., description="List of review assessments for each product provided")
+
 class VetoDecision(BaseModel):
     decision: str = Field(..., description="'veto' or 'proceed'")
     better_search_query: Optional[str] = Field(None, description="A specific, mutated search query to find better results if vetoing (e.g., 'Sony WH-1000XM5 reddit reviews')")
@@ -168,6 +171,59 @@ Do NOT claim any company has specific certifications unless that info was provid
                 cons=[],
                 verdict="Error"
             )
+
+    def batch_analyze_alternatives(self, candidates: List[dict], eco_context: str = "") -> List[ReviewSentiment]:
+        """
+        Analyzes multiple candidates in a single LLM call for speed.
+        """
+        if not candidates:
+            return []
+            
+        candidate_names = [c.get('name', 'Unknown') for c in candidates]
+        print(f"   [Skeptic] 🚀 Batch Analyzing {len(candidate_names)} candidates...")
+        
+        system_prompt = """You are 'The Skeptic', a fair and balanced product analyst.
+Your goal is to provide a brief assessments for a list of ALTERNATIVE products.
+
+For each product, evaluate:
+1. TRUST SCORE (0-10): Baseline 7. Deduct for suspicious patterns, add for authenticity.
+2. SENTIMENT SCORE (-1 to 1): Overall user consensus.
+3. ECO SCORE (0-1): Based on category, brand, and research data below.
+
+RESEARCH DATA:
+{eco_context}
+
+IMPORTANT:
+- If no specific research data is provided for a product, score Eco based on its CATEGORY (Electronics=0.45, Refurbished=0.70, etc.).
+- Keep the 'summary' very short (1 sentence).
+- Return a list called 'assessments' matching the order of products provided.
+"""
+        system_prompt = system_prompt.replace("{eco_context}", eco_context or "No specific research data available. Use category-based evaluation.")
+
+        human_prompt = f"Analyze these {len(candidate_names)} products:\n" + "\n".join([f"- {name}" for name in candidate_names])
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", human_prompt + "\n\n{format_instructions}")
+        ])
+        
+        batch_parser = PydanticOutputParser(pydantic_object=BatchReviewSentiment)
+        chain = prompt | self.llm | batch_parser
+        
+        try:
+             result = chain.invoke({"format_instructions": batch_parser.get_format_instructions()})
+             return result.assessments
+        except Exception as e:
+             logger.error(f"Batch Analysis Failed: {e}")
+             # Fallback: Basic defaults
+             return [
+                 ReviewSentiment(
+                     summary="Analysis fallback used.",
+                     trust_score=5.0,
+                     sentiment_score=0.0,
+                     verdict="Neutral"
+                 ) for _ in candidates
+             ]
 
     def evaluate_candidates_for_veto(self, candidates: List[dict], user_prefs: dict, loop_count: int) -> VetoDecision:
         """
