@@ -107,3 +107,39 @@ export const chatFollowup = async (userQuery, threadId, sessionState, chatHistor
         throw error;
     }
 };
+
+/**
+ * Get the current user's profile including preferences.
+ */
+export const getUserProfile = async (token) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/v1/users/me`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get User Profile API Error:", error);
+        throw error;
+    }
+};
+
+/**
+ * Update the current user's global preferences.
+ * @param {Object} prefs - Preference weights (0.0-1.0): price_sensitivity, quality, eco_friendly, brand_reputation, durability
+ */
+export const updatePreferences = async (prefs, token) => {
+    try {
+        const response = await axios.patch(`${API_URL}/api/v1/users/preferences`, prefs, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Update Preferences API Error:", error);
+        throw error;
+    }
+};
