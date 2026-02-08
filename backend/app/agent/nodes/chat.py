@@ -90,19 +90,20 @@ Return ONLY valid JSON, no markdown."""),
             ("system", """You are a Preference Extractor for a Shopping Assistant. Analyze the user's message and extract ALL relevant preferences.
 
 Return a JSON object with these possible keys:
-- exclude_colors: list of colors to avoid (e.g., ["red", "orange"])
-- prefer_colors: list of preferred colors (e.g., ["blue", "black"])
-- prefer_brands: list of preferred brands
+- exclude_colors: list of colors to avoid
+- prefer_colors: list of preferred colors
+- prefer_brands: list of preferred brands (extract from "I like X", "I prefer X", "X is good", or just "X")
 - exclude_brands: list of brands to avoid
-- style_keywords: list of style descriptors (e.g., ["modern", "minimalist"])
-- max_budget: number (if user mentions specific dollar amount, e.g., "$120" -> 120)
+- style_keywords: list of style descriptors (e.g., "modern", "minimalist")
+- max_budget: number (if user mentions specific dollar amount)
 
 Examples:
 - "I don't like red" -> {{"exclude_colors": ["red"]}}
 - "Show me blue ones" -> {{"prefer_colors": ["blue"]}}
 - "I prefer Nike" -> {{"prefer_brands": ["Nike"]}}
+- "I like Panasonic" -> {{"prefer_brands": ["Panasonic"]}}
+- "Sony is better" -> {{"prefer_brands": ["Sony"]}}
 - "I only have $120" -> {{"max_budget": 120}}
-- "Show me blue ones under $100" -> {{"prefer_colors": ["blue"], "max_budget": 100}}
 
 Return ONLY valid JSON, no markdown."""),
             ("human", "{user_query}")
