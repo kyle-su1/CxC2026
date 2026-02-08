@@ -198,6 +198,9 @@ const DashboardPage = () => {
         if (!imageBase64 || !userQuery.trim()) return;
 
         setIsChatAnalyzing(true);
+        setIsAnalyzing(true);  // Trigger right-panel loading UI
+        setAgentStep(0);       // Start agent progress animation
+        setAnalysisResult(null); // Clear old results while loading
 
         // Add user message to chat history
         const newMessages = [...chatMessages, { role: 'user', content: userQuery }];
@@ -206,9 +209,17 @@ const DashboardPage = () => {
         // Add thinking placeholder
         setChatMessages([...newMessages, { role: 'assistant', content: null, isThinking: true }]);
 
+        // Animate agent steps (simulated progress)
+        const stepInterval = setInterval(() => {
+            setAgentStep(prev => (prev < 4 ? prev + 1 : prev));
+        }, 2500); // ~10s total for 4 steps
+
         try {
             const token = await getAccessTokenSilently();
             const result = await chatAnalyze(imageBase64, userQuery, chatMessages, token);
+
+            clearInterval(stepInterval);
+            setAgentStep(5); // Complete
 
             // Update bounding boxes if targeted object found
             if (result.targeted_bounding_box) {
@@ -220,7 +231,7 @@ const DashboardPage = () => {
                             name: result.targeted_object_name || 'Target',
                             bounding_box: result.targeted_bounding_box,
                             confidence: result.confidence || 0.9,
-                            lens_status: 'pending'
+                            lens_status: 'identified'
                         }]
                     }
                 }));
@@ -242,6 +253,7 @@ const DashboardPage = () => {
             }
 
         } catch (error) {
+            clearInterval(stepInterval);
             console.error("Chat analyze failed:", error);
             setChatMessages([...newMessages, {
                 role: 'assistant',
@@ -249,6 +261,7 @@ const DashboardPage = () => {
             }]);
         } finally {
             setIsChatAnalyzing(false);
+            setIsAnalyzing(false);
         }
     };
 
