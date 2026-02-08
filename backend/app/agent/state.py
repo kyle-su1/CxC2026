@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Optional, Any
+from typing import TypedDict, List, Optional, Any, Annotated
 
 class AgentState(TypedDict):
     """
@@ -71,4 +71,4 @@ class AgentState(TypedDict):
     final_recommendation: Optional[dict]
     
     # Performance Tracking
-    node_timings: Optional[dict] # {node_name: time_seconds} for total runtime calculation
+    node_timings: Annotated[dict, lambda a, b: {**(a or {}), **b}] # {node_name: time_seconds} for total runtime calculation
