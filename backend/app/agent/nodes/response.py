@@ -44,7 +44,9 @@ def node_response_formulation(state: AgentState) -> Dict[str, Any]:
             "reason": alt.get("reason", ""),
             "image": alt.get("image_url"),
             "link": alt.get("purchase_link"),
-            "price_text": alt.get("score_details", {}).get("price_val", 0) # Raw value for LLM context
+            "price_text": alt.get("score_details", {}).get("price_val", 0), # Raw value for LLM context
+            "eco_score": alt.get("eco_score", 0.5),
+            "eco_notes": alt.get("eco_notes", "")
         })
     
     # Initialize Speaker Agent with MODEL_RESPONSE
@@ -149,7 +151,9 @@ JSON OUTPUT FORMAT:
             "detected_objects": detected_objects,
             "image_url": main_prod_meta.get("image_url"),     # New field
             "purchase_link": main_prod_meta.get("purchase_link"), # New field
-            "price_text": f"${main_prod_meta.get('price_val', 0):.2f}" if main_prod_meta.get('price_val') else "Check Price"
+            "price_text": f"${main_prod_meta.get('price_val', 0):.2f}" if main_prod_meta.get('price_val') else "Check Price",
+            "eco_score": main_prod_meta.get("eco_score", 0.5), # Propagated field
+            "eco_notes": main_prod_meta.get("eco_notes", "")   # Propagated field
         }
 
         # Double check alternatives have links (sometimes LLM hallucinates or drops them)
@@ -159,6 +163,11 @@ JSON OUTPUT FORMAT:
             if matching_source:
                 alt['image'] = matching_source.get('image')
                 alt['link'] = matching_source.get('link')
+        
+        # Override alternatives with full data from analysis_object (includes score_breakdown)
+        # This ensures all scoring data from Node 4 is preserved
+        if analysis.get('alternatives'):
+            final_payload['alternatives'] = analysis['alternatives']
 
         logger.info(f"Successfully generated response for: {final_payload.get('identified_product')}")
         log_debug(f"Response Node Payload: {final_payload}")

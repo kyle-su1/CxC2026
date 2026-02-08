@@ -54,21 +54,18 @@ class SkepticAgent:
         """
         Analyzes a list of reviews to determine authenticity and sentiment.
         """
-        if not reviews:
-             return ReviewSentiment(
-                 summary="No reviews available for analysis.",
-                 trust_score=5.0,  # Neutral, not suspicious
-                 sentiment_score=0.0,
-                 red_flags=[],
-                 pros=[],
-                 cons=[],
-                 verdict="Needs more reviews"
-             )
+        # Analyzes a list of reviews to determine authenticity and sentiment.
+        # Even if NO reviews are present, we still run the analysis to generate the Eco Score
+        # and checking for inherent product flaws based on category/brand.
 
-        # Format reviews for the prompt
-        reviews_context = "\n---\n".join(
-            [f"Source: {r.source}\nRating: {r.rating}/5\nDate: {r.date}\nContent: {r.text}" for r in reviews]
-        )
+        reviews_context = ""
+        if not reviews:
+             reviews_context = "NO USER REVIEWS AVAILABLE. Focus analysis on Product Name/Brand for Eco Score and known category issues."
+        else:
+            # Format reviews for the prompt
+            reviews_context = "\n---\n".join(
+                [f"Source: {r.source}\nRating: {r.rating}/5\nDate: {r.date}\nContent: {r.text}" for r in reviews]
+            )
         
         system_prompt = """You are 'The Skeptic', a fair and balanced product analyst.
 Your goal is to analyze product reviews and provide an honest assessment of {product_name}.
@@ -81,6 +78,12 @@ CONSIDER THESE FACTORS:
 - A mix of ratings (some 5-star, some 3-star) is normal and healthy.
 - Look for consistent themes across multiple reviews.
 - New products may have fewer reviews - this is not automatically suspicious.
+
+IF NO REVIEWS ARE AVAILABLE:
+- Return "trust_score": 5.0 (Neutral)
+- Return "sentiment_score": 0.0 (Neutral)
+- Return "verdict": "No reviews found - assess based on specs/brand"
+- BUT ***YOU MUST STILL EVALUATE THE ECO_SCORE*** based on the product name, brand, and category.
 
 RED FLAGS (only flag if clearly present):
 - Obvious fake reviews with identical phrasing copy-pasted.
@@ -98,15 +101,16 @@ SCORING GUIDELINES:
 ENVIRONMENTAL FRIENDLINESS (eco_score 0-1):
 Evaluate based on:
 1. SUSTAINABILITY RESEARCH DATA (if provided below)
-2. Mentions in reviews about durability/longevity  
-3. Build quality and materials (recyclable, sustainable = higher)
-4. Brand's known sustainability reputation
+2. CORPORATE STATS (Net Zero, B Corp, ESG scores) - HIGH IMPACT
+3. Mentions in reviews about durability/longevity  
+4. Build quality and materials (recyclable, sustainable = higher)
 5. Packaging and repairability
 
 {eco_section}
 
-Score 0.7+ for clearly eco-conscious products, 0.3 or below for disposable/harmful products.
-Provide a brief eco_notes explanation of your assessment.
+Score 0.8+ for B Corps, Net Zero verification, or clearly eco-conscious products.
+Score 0.3 or below for disposable/harmful products or unknowns with bad reputation.
+Provide a brief eco_notes explanation, CITIING textual evidence if available.
 
 BE FAIR. Most products deserve a trust score of 6-8 unless there are clear problems.
 Output the result in the specified JSON format.

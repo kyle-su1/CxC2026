@@ -1,0 +1,3 @@
+VITE_AUTH0_DOMAIN=dev-g1477nceu00mfa60.us.auth0.com
+VITE_AUTH0_CLIENT_ID=g6CXTjJYrbjtiPJZvt3Wi14IIlEvMxSS
+VITE_AUTH0_AUDIENCE=https://shopping-suggester-api
