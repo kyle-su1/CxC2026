@@ -308,6 +308,12 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             {
                "name": a['name'],
                "score": a['score_details']['total_score'],
+               "score_breakdown": {
+                   "price": round(a['score_details']['price_score'] * 100, 1),
+                   "quality": round((a['score_details']['sentiment_score'] + 1) / 2 * 100, 1),  # -1 to 1 -> 0 to 100
+                   "trust": round(a['score_details']['trust_score'] * 10, 1),  # 0-10 -> 0-100
+                   "eco": round(a['score_details']['eco_score'] * 100, 1),  # 0-1 -> 0-100
+               },
                "reason": a['reason'],
                "image": a.get('image_url'),
                "link": a.get('purchase_link'),

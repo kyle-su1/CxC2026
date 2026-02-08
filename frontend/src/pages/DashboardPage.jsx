@@ -76,10 +76,54 @@ const ProductModal = ({ product, onClose }) => {
                             <h3 className="text-gray-400 uppercase text-xs font-bold tracking-wider mb-2">Analysis</h3>
                             <p className="text-gray-300 leading-relaxed">{product.reason || product.description || "No detailed description available."}</p>
 
-                            <div className="mt-4 grid grid-cols-2 gap-4">
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                                {/* Price Score */}
                                 <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Match Score</span>
-                                    <span className="text-lg font-mono text-white">{Math.round(product.score || 0)}/100</span>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">💰 Price</span>
+                                        <span className="text-xs font-mono text-white">{Math.round(product.score_breakdown?.price || 0)}/100</span>
+                                    </div>
+                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500" style={{ width: `${product.score_breakdown?.price || 0}%` }} />
+                                    </div>
+                                </div>
+                                {/* Quality Score */}
+                                <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">⭐ Quality</span>
+                                        <span className="text-xs font-mono text-white">{Math.round(product.score_breakdown?.quality || 0)}/100</span>
+                                    </div>
+                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-500" style={{ width: `${product.score_breakdown?.quality || 0}%` }} />
+                                    </div>
+                                </div>
+                                {/* Trust Score */}
+                                <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">🛡️ Trust</span>
+                                        <span className="text-xs font-mono text-white">{Math.round(product.score_breakdown?.trust || 0)}/100</span>
+                                    </div>
+                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500" style={{ width: `${product.score_breakdown?.trust || 0}%` }} />
+                                    </div>
+                                </div>
+                                {/* Eco Score */}
+                                <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">🌱 Eco</span>
+                                        <span className="text-xs font-mono text-white">{Math.round(product.score_breakdown?.eco || 0)}/100</span>
+                                    </div>
+                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-500" style={{ width: `${product.score_breakdown?.eco || 0}%` }} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Overall Match Score */}
+                            <div className="mt-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 p-3 rounded-lg border border-purple-500/20">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-purple-300 uppercase tracking-wider font-medium">Overall Match</span>
+                                    <span className="text-lg font-mono font-bold text-white">{Math.round(product.score || 0)}/100</span>
                                 </div>
                             </div>
                         </div>
@@ -320,7 +364,7 @@ const DashboardPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-[#08090A] text-white font-sans selection:bg-emerald-500/30 relative overflow-hidden">
+        <div className="h-screen bg-[#08090A] text-white font-sans selection:bg-emerald-500/30 relative overflow-hidden">
             {/* Gradient for dashboard - green theme */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-[0%] right-[0%] w-[40%] h-[40%] rounded-full bg-emerald-900/15 blur-[100px]" />
@@ -328,9 +372,9 @@ const DashboardPage = () => {
             </div>
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none"></div>
 
-            <div className="relative w-full max-w-[98vw] mx-auto px-6 py-6 flex flex-col min-h-screen">
+            <div className="relative w-full max-w-[98vw] mx-auto px-6 py-6 flex flex-col h-full">
                 {/* Header */}
-                <header className="flex items-center justify-between mb-8 animate-fade-in-up">
+                <header className="flex items-center justify-between mb-4 animate-fade-in-up flex-shrink-0">
                     <Link to="/" className="flex items-center gap-3 group cursor-pointer" title="Return to landing page">
                         <Logo className="w-8 h-8 transition-all duration-300 group-hover:scale-110 group-hover:rotate-[360deg]" />
                         <div className="flex flex-col">
@@ -349,10 +393,10 @@ const DashboardPage = () => {
                 </header>
 
                 {/* Main Interaction Area - 3 Column Layout */}
-                <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-1">
+                <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
 
                     {/* Left Panel: Upload - Collapsible */}
-                    <div className={`${isImageCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up`} style={{ animationDelay: '100ms' }}>
+                    <div className={`${isImageCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up overflow-hidden`} style={{ animationDelay: '100ms' }}>
                         <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col">
                             <h3 className="text-sm font-semibold text-blue-400/80 uppercase tracking-wider mb-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -428,7 +472,7 @@ const DashboardPage = () => {
                     </div>
 
                     {/* Middle Panel: Chat */}
-                    <div className={`${isImageCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up`} style={{ animationDelay: '200ms' }}>
+                    <div className={`${isImageCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up overflow-hidden`} style={{ animationDelay: '200ms' }}>
                         <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col">
                             <h3 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

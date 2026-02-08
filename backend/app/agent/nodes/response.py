@@ -161,6 +161,11 @@ JSON OUTPUT FORMAT:
             if matching_source:
                 alt['image'] = matching_source.get('image')
                 alt['link'] = matching_source.get('link')
+        
+        # Override alternatives with full data from analysis_object (includes score_breakdown)
+        # This ensures all scoring data from Node 4 is preserved
+        if analysis.get('alternatives'):
+            final_payload['alternatives'] = analysis['alternatives']
 
         logger.info(f"Successfully generated response for: {final_payload.get('identified_product')}")
         log_debug(f"Response Node Payload: {final_payload}")
