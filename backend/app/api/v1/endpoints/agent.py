@@ -144,6 +144,8 @@ class ChatAnalyzeResponse(BaseModel):
     targeted_bounding_box: Optional[List[float]] = None  # [ymin, xmin, ymax, xmax]
     confidence: Optional[float] = None
     analysis: Optional[dict] = None
+    thread_id: Optional[str] = None  # For follow-up conversations
+    session_state: Optional[dict] = None  # Prior analysis state for follow-ups
 
 
 @router.post("/chat-analyze", response_model=ChatAnalyzeResponse)
@@ -288,12 +290,23 @@ Return ONLY valid JSON, no markdown."""
         # Normalize bbox back to 0-1 for frontend
         normalized_bbox = [v / 1000.0 for v in bbox] if bbox else None
         
+        # Build session state for follow-ups (includes data needed for re-analysis)
+        session_state = {
+            "product_query": initial_state.get("product_query"),
+            "market_scout_data": final_state.get("market_scout_data"),
+            "research_data": final_state.get("research_data"),
+            "risk_report": final_state.get("risk_report"),
+            "analysis_object": final_state.get("analysis_object"),
+        }
+        
         return ChatAnalyzeResponse(
             chat_response=chat_response,
             targeted_object_name=product_name,
             targeted_bounding_box=normalized_bbox,
             confidence=lens_result.get("confidence", 0.8),
-            analysis=full_result  # Full analysis data for frontend
+            analysis=full_result,
+            thread_id=thread_id,  # Return for follow-up persistence
+            session_state=session_state  # Prior state for re-analysis
         )
         
     except json.JSONDecodeError as e:
@@ -309,3 +322,95 @@ Return ONLY valid JSON, no markdown."""
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+
+# ============================================================
+# CHAT FOLLOW-UP ENDPOINT (Node 6: Conversational Loop)
+# ============================================================
+
+class ChatFollowupRequest(BaseModel):
+    """Request for follow-up questions after initial analysis."""
+    user_query: str
+    thread_id: str  # Required for state persistence
+    session_state: dict  # Prior analysis state (from initial chat-analyze)
+    chat_history: List[dict] = []
+
+
+class ChatFollowupResponse(BaseModel):
+    """Response from follow-up with potentially updated analysis."""
+    chat_response: str
+    analysis: Optional[dict] = None  # Updated analysis if re-scored
+    intent: str  # What the router decided: 're_analysis', 're_search', 'chat'
+
+
+@router.post("/chat-followup", response_model=ChatFollowupResponse)
+async def chat_followup(request: ChatFollowupRequest):
+    """
+    Handle follow-up questions after initial analysis.
+    
+    Routes based on intent:
+    - re_analysis: User wants cheaper/different scoring → Re-run Node 4
+    - re_search: User wants different products (color, brand) → Re-run Node 2
+    - chat: General question → Just respond
+    """
+    from app.agent.graph import agent_app
+    import uuid
+    
+    print(f"\n[ChatFollowup] Query: {request.user_query}")
+    print(f"[ChatFollowup] Thread: {request.thread_id}")
+    
+    try:
+        # Build state from prior session
+        initial_state = {
+            "user_query": request.user_query,
+            "image_base64": "",  # No new image
+            "user_preferences": {},
+            "chat_history": request.chat_history,
+            # Restore prior analysis state
+            "product_query": request.session_state.get("product_query", {}),
+            "market_scout_data": request.session_state.get("market_scout_data", {}),
+            "research_data": request.session_state.get("research_data", {}),
+            "risk_report": request.session_state.get("risk_report", {}),
+            "analysis_object": request.session_state.get("analysis_object", {}),
+            # Skip vision - we already have the product
+            "skip_vision": True,
+        }
+        
+        # Use same thread_id for state continuity
+        config = {"configurable": {"thread_id": request.thread_id}}
+        
+        # Invoke the graph (starts at Router Node)
+        final_state = await agent_app.ainvoke(initial_state, config=config)
+        
+        # Extract results
+        router_decision = final_state.get("router_decision", "chat")
+        final_rec = final_state.get("final_recommendation", {})
+        
+        print(f"[ChatFollowup] Final State Keys: {final_state.keys()}")
+        print(f"[ChatFollowup] Final Recommendation Keys: {final_rec.keys()}")
+        
+        chat_response = final_rec.get("chat_response", "")
+        
+        # If re-analysis occurred, get the updated analysis
+        updated_analysis = None
+        if router_decision in ["re_analysis", "re_search"]:
+            updated_analysis = final_rec
+            if not chat_response:
+                chat_response = "I've updated the recommendations based on your preferences."
+        
+        if not chat_response:
+            chat_response = "I'm not sure how to help with that. Can you rephrase?"
+        
+        print(f"[ChatFollowup] Intent: {router_decision}")
+        print(f"[ChatFollowup] Has Updated Analysis: {bool(updated_analysis)}")
+        
+        return ChatFollowupResponse(
+            chat_response=chat_response,
+            analysis=updated_analysis,
+            intent=router_decision
+        )
+        
+    except Exception as e:
+        print(f"[ChatFollowup] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Follow-up failed: {str(e)}")

@@ -27,6 +27,7 @@ class PriceOffer(BaseModel):
     price_cents: int
     currency: str
     url: str
+    title: Optional[str] = None
     shipping_cents: Optional[int] = None
     total_cents: Optional[int] = None
     in_stock: Optional[bool] = None

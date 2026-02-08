@@ -4,7 +4,7 @@ import ImageUploader from '../components/ImageUploader'
 import LogoutButton from '../components/LogoutButton'
 import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios';
-import { chatAnalyze } from '../lib/api'
+import { chatAnalyze, chatFollowup } from '../lib/api'
 import ChatInterface from '../components/ChatInterface';
 import ScanningOverlay from '../components/ScanningOverlay';
 import AgentStatusDisplay from '../components/AgentStatusDisplay';
@@ -22,6 +22,9 @@ const DashboardPage = () => {
     const [chatMessages, setChatMessages] = useState([]);
     const [agentStep, setAgentStep] = useState(0);
     const [isImageCollapsed, setIsImageCollapsed] = useState(false);
+    // Follow-up conversation state
+    const [threadId, setThreadId] = useState(null);
+    const [sessionState, setSessionState] = useState(null);
 
     // Poll backend health
     useEffect(() => {
@@ -44,7 +47,11 @@ const DashboardPage = () => {
         setImageFile(file)
         setImageBase64(base64)
         setAnalysisResult(null)
-        setAnalyzedImage(base64); // Set the image for display
+        setAnalyzedImage(base64);
+        // Reset conversation state for new image
+        setThreadId(null);
+        setSessionState(null);
+        setChatMessages([]);
     }
 
     // Handle chat-based targeted analysis
@@ -70,41 +77,72 @@ const DashboardPage = () => {
 
         try {
             const token = await getAccessTokenSilently();
-            const result = await chatAnalyze(imageBase64, userQuery, chatMessages, token);
+            let result;
+
+            // Use follow-up endpoint if we have prior analysis state
+            if (threadId && sessionState) {
+                console.log('[DashboardPage] Using chat-followup endpoint');
+                result = await chatFollowup(userQuery, threadId, sessionState, chatMessages, token);
+
+                // If follow-up returned updated analysis, merge it
+                if (result.analysis) {
+                    setAnalysisResult(prev => ({
+                        ...prev,
+                        ...result.analysis
+                    }));
+                    // Update session state with new analysis data
+                    setSessionState(prev => ({
+                        ...prev,
+                        analysis_object: result.analysis
+                    }));
+                }
+            } else {
+                // First analysis - use full pipeline
+                console.log('[DashboardPage] Using chat-analyze endpoint (initial)');
+                result = await chatAnalyze(imageBase64, userQuery, chatMessages, token);
+
+                // Store thread_id and session_state for follow-ups
+                if (result.thread_id) {
+                    setThreadId(result.thread_id);
+                }
+                if (result.session_state) {
+                    setSessionState(result.session_state);
+                }
+
+                // Update bounding boxes if targeted object found
+                if (result.targeted_bounding_box) {
+                    setAnalysisResult(prev => ({
+                        ...prev,
+                        active_product: {
+                            ...(prev?.active_product || {}),
+                            detected_objects: [{
+                                name: result.targeted_object_name || 'Target',
+                                bounding_box: result.targeted_bounding_box,
+                                confidence: result.confidence || 0.9,
+                                lens_status: 'identified'
+                            }]
+                        }
+                    }));
+                }
+
+                // If full analysis available, update results
+                if (result.analysis) {
+                    setAnalysisResult(prev => ({
+                        ...prev,
+                        ...result.analysis
+                    }));
+                }
+            }
 
             clearInterval(stepInterval);
             setAgentStep(5); // Complete
 
-            // Update bounding boxes if targeted object found
-            if (result.targeted_bounding_box) {
-                setAnalysisResult(prev => ({
-                    ...prev,
-                    active_product: {
-                        ...(prev?.active_product || {}),
-                        detected_objects: [{
-                            name: result.targeted_object_name || 'Target',
-                            bounding_box: result.targeted_bounding_box,
-                            confidence: result.confidence || 0.9,
-                            lens_status: 'identified'
-                        }]
-                    }
-                }));
-            }
-
             // Replace thinking with AI response
             setChatMessages([...newMessages, {
                 role: 'assistant',
-                content: result.chat_response || 'I found the item. Click the highlighted area for details.',
+                content: result.chat_response || 'Analysis complete.',
                 boundingBox: result.targeted_bounding_box
             }]);
-
-            // If full analysis available, update results
-            if (result.analysis) {
-                setAnalysisResult(prev => ({
-                    ...prev,
-                    ...result.analysis
-                }));
-            }
 
         } catch (error) {
             clearInterval(stepInterval);

@@ -83,3 +83,27 @@ export const chatAnalyze = async (imageBase64, userQuery, chatHistory, token) =>
         throw error;
     }
 };
+
+/**
+ * Follow-up chat for re-analysis or re-search.
+ * Used after initial analysis to ask things like "is there a cheaper option?"
+ */
+export const chatFollowup = async (userQuery, threadId, sessionState, chatHistory, token) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/v1/agent/chat-followup`, {
+            user_query: userQuery,
+            thread_id: threadId,
+            session_state: sessionState,
+            chat_history: chatHistory || []
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Chat Followup API Error:", error);
+        throw error;
+    }
+};

@@ -47,26 +47,44 @@ def get_shopping_offers(product: ProductQuery, trace: list) -> List[PriceOffer]:
 
         for item in data.get("shopping_results", []):
             # SerpAPI uses "price" (e.g. "$5.88") or "extracted_price" (numeric)
-            price_str = item.get("price") or item.get("extracted_price") or ""
-            if isinstance(price_str, (int, float)):
-                price_cents = int(price_str * 100)
-            else:
-                price_str = str(price_str).replace("$", "").replace(",", "").strip()
-                try:
-                    price_cents = int(float(price_str) * 100)
-                except (ValueError, TypeError):
-                    continue
+            # SerpAPI uses "price" (e.g. "$5.88") or "extracted_price" (numeric)
+            price_val = item.get("extracted_price")
+            price_str = item.get("price")
+            
+            price_cents = 0
+            # Priority 1: Use extracted_price if available (it's usually a reliable float)
+            if isinstance(price_val, (int, float)):
+                price_cents = int(round(price_val * 100))
+            
+            # Priority 2: Parse price string if extracted_price failed
+            elif price_str:
+                import re
+                # Clean string: remove currency symbols, letters, etc. keep digits, dots, commas
+                # Matches: $1,234.56 -> 1,234.56
+                # Matches: CA$ 1200 -> 1200
+                match = re.search(r'[\d,]+\.?\d*', str(price_str))
+                if match:
+                    clean_str = match.group(0).replace(",", "")
+                    try:
+                        price_cents = int(round(float(clean_str) * 100))
+                    except (ValueError, TypeError):
+                        pass
+
+            if price_cents == 0:
+                continue
 
             # SerpAPI Google Shopping uses "product_link", not "link"
             link = item.get("product_link") or item.get("link")
             if not link:
                 continue
+
             offers.append(
                 PriceOffer(
                     vendor=item.get("source") or "Unknown",
                     price_cents=price_cents,
                     currency="CAD",
                     url=link,
+                    title=item.get("title") or item.get("source"), # Capture title
                     thumbnail=item.get("thumbnail") # Extract thumbnail
                 )
             )

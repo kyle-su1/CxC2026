@@ -144,8 +144,10 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
     Search Context:
     {context_text}
     
-    Return a Strict JSON List of objects with keys: "name", "reason".
-    Example: [{{"name": "Competitor X", "reason": "Better battery life"}}]
+    Return a Strict JSON List of objects with keys: "name", "category", "reason".
+    "name" MUST be the specific model name (e.g. "Sony WH-1000XM5", "BenQ TK700"), NOT just the brand.
+    "category" should be the product type (e.g. "Headphones", "Projector").
+    Example: [{{"name": "Competitor X Model Y", "category": "Smart Watch", "reason": "Better battery life"}}]
     """
     
     llm_extract_start = time.time()
@@ -215,6 +217,7 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
                     # Convert to candidate format
                     cand = {
                         "name": res.get('name'),
+                        "category": res.get('metadata', {}).get('category', ''), # Attempt to get category from metadata
                         "reason": "Found in internal database (High Similarity)",
                         "estimated_price": f"${res.get('price')} (Historical)",
                         "pros": ["Verified Product"],
@@ -240,48 +243,77 @@ def node_market_scout(state: AgentState) -> Dict[str, Any]:
 
                 def enrich_candidate(cand):
                     name = cand.get('name')
+                    category = cand.get('category', '')
                     if not name:
                         return
                     
                     try:
-                        temp_query = ProductQuery(canonical_name=name)
+                        # Construct a more specific query with category
+                        search_query = f"{name} {category}".strip()
+                        temp_query = ProductQuery(canonical_name=search_query)
                         temp_trace = []
                         
                         # Get prices
                         price_offers = get_shopping_offers(temp_query, temp_trace)
+
+                        # Filter out accessories/parts based on title
+                        valid_offers = []
+                        if price_offers:
+                            bad_keywords = ["lamp", "bulb", "remote", "mount", "bracket", "case", "bag", "filter", "adapter", "cable", "part", "replacement", "stand", "ceiling", "screen"]
+                            
+                            for p in price_offers:
+                                title_lower = (p.title or "").lower()
+                                # Check if title contains bad keywords BUT is not the main category itself (imperfect heuristic)
+                                # e.g. "Replacement Lamp" -> Bad. "Projector with Lamp" -> Good?
+                                # Simple check: if bad keyword exists, skip.
+                                if not any(kw in title_lower for kw in bad_keywords):
+                                    valid_offers.append(p)
+                                else:
+                                    print(f"       -> Skipped accessory: {p.title}")
+                                    
+                        # Fallback to all offers if filtering is too aggressive
+                        if not valid_offers and price_offers:
+                            valid_offers = price_offers
+                            print(f"       -> Filtering removed all offers, reverting to original list.")
+                        
                         cand['prices'] = [
                             {
                                 "vendor": p.vendor, 
                                 "price": p.price_cents / 100, 
+                                "price_cents": p.price_cents, # Add for consistency with research.py
                                 "currency": p.currency, 
                                 "url": p.url,
                                 "thumbnail": p.thumbnail
                             }
-                            for p in price_offers
+                            for p in valid_offers
                         ]
                         
                         # --- PRICE LOGGING ---
                         try:
                             with open("/app/logs/price_debug.log", "a", encoding="utf-8") as f:
-                                for p in price_offers:
+                                for p in valid_offers:
                                     f.write(f"Product: {name} | Price: {p.price_cents/100:.2f} {p.currency} | Vendor: {p.vendor} | URL: {p.url}\n")
                         except Exception as log_e:
                             print(f"       -> Logging failed: {log_e}")
                         # ---------------------
                         
-                        if price_offers:
+                        if valid_offers:
                             # Capture Image and Link from best offer
-                            best_offer = price_offers[0] 
+                            best_offer = valid_offers[0] 
                             cand['image_url'] = getattr(best_offer, 'thumbnail', None)
                             cand['purchase_link'] = best_offer.url
                             
-                            sorted_prices = sorted([p.price_cents for p in price_offers])
+                            sorted_prices = sorted([p.price_cents for p in valid_offers])
                             median_idx = len(sorted_prices) // 2
                             median_price = sorted_prices[median_idx] / 100
-                            cand['estimated_price'] = f"${median_price:.2f} CAD"
+                            
+                            # Use currency from best offer or default to CAD
+                            currency_code = best_offer.currency if best_offer.currency else "CAD"
+                            
+                            cand['estimated_price'] = f"${median_price:.2f} {currency_code}"
                             cand['price_text'] = f"${median_price:.2f}"
-                            print(f"       -> {name}: {len(price_offers)} prices found.")
-                            print(f"       -> {name}: {len(price_offers)} prices found.")
+                            print(f"       -> {name}: {len(valid_offers)} valid prices found.")
+                            print(f"       -> {name}: {len(valid_offers)} valid prices found.")
                         else:
                             # Fallback Logic: Use Tavily data or Google Shopping Search
                             

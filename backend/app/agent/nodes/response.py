@@ -137,10 +137,13 @@ JSON OUTPUT FORMAT:
         main_prod_meta = next((item for item in alternatives_analysis if item.get("is_main")), {})
         
         product_query = state.get('product_query', {})
+        detected_objects = product_query.get('detected_objects', [])
+        bbox = detected_objects[0].get('bounding_box') if detected_objects else None
+        
         final_payload['active_product'] = {
             "name": final_payload.get('identified_product'),
-            "bounding_box": state.get('bounding_box'),
-            "detected_objects": product_query.get('detected_objects', []),
+            "bounding_box": bbox,
+            "detected_objects": detected_objects,
             "image_url": main_prod_meta.get("image_url"),     # New field
             "purchase_link": main_prod_meta.get("purchase_link"), # New field
             "price_text": f"${main_prod_meta.get('price_val', 0):.2f}" if main_prod_meta.get('price_val') else "Check Price"

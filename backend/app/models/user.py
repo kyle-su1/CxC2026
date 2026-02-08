@@ -36,3 +36,6 @@ class User(Base):
 
     # Relationship to search history
     searches = relationship("SearchHistory", back_populates="user", cascade="all, delete-orphan")
+    
+    # Relationship to chat sessions
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
