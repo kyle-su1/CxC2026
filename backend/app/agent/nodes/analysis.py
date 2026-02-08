@@ -284,6 +284,11 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
              
         # Create full candidate object for main product
         price = main_candidate.get('prices', [{}])[0].get('price', 0)
+        try:
+            price = float(price) if price else 0.0
+        except:
+            price = 0.0
+            
         score_obj = calculate_weighted_score(
             trust_score=main_sentiment.get('trust_score', 5.0),
             sentiment_score=main_sentiment.get('sentiment_score', 0.0),
@@ -300,6 +305,8 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             "reason": main_candidate.get('reason'),
             "image_url": main_candidate.get('image_url'),
             "purchase_link": main_candidate.get('purchase_link'),
+            "price_text": main_candidate.get('price_text', f"${price:.2f}" if price else "Check Price"),
+            "price_val": price,
             "is_main": True,
             "eco_score": adjust_eco_score(main_sentiment.get('eco_score', 0.5), main_candidate['name']),
             "eco_notes": sanitize_eco_notes(main_sentiment.get('eco_notes', ''), main_candidate['name'], bool(eco_context))
@@ -341,6 +348,7 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
                     "reason": alt.get('reason'),
                     "image_url": alt.get('image_url'),
                     "purchase_link": alt.get('purchase_link'),
+                    "price_text": alt.get('price_text', f"${price:.2f}" if price else "Check Price"),
                     "is_main": False,
                     "eco_score": adjust_eco_score(sentiment_data.get('eco_score', 0.5), alt.get('name', '')),
                     "eco_notes": sanitize_eco_notes(sentiment_data.get('eco_notes', ''), alt.get('name', ''), bool(eco_context))

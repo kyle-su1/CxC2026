@@ -531,7 +531,7 @@ const DashboardPage = () => {
 
                             {/* --- DEEP SEARCH NOTIFICATION --- */}
                             {analysisResult && analysisResult.was_refined && (
-                                <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-center gap-4 animate-fade-in relative overflow-hidden group">
+                                <div className="mb-6 bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-start gap-4 animate-fade-in relative group">
                                     {/* Background glow */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -563,17 +563,8 @@ const DashboardPage = () => {
                                                     {analysisResult.identified_product || "Unknown Product"}
                                                 </h2>
                                                 <div className="flex flex-col items-end gap-1 shrink-0">
-                                                    <div className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide border whitespace-nowrap ${analysisResult.outcome === 'highly_recommended'
-                                                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                                        : analysisResult.outcome === 'recommended'
-                                                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                                        }`}>
-                                                        {analysisResult.outcome === 'highly_recommended'
-                                                            ? 'HIGHLY RECOMMENDED'
-                                                            : analysisResult.outcome === 'recommended'
-                                                                ? 'RECOMMENDED'
-                                                                : 'CONSIDER ALTERNATIVES'}
+                                                    <div className="px-3 py-1 rounded-full text-xs font-semibold tracking-wide border whitespace-nowrap bg-cyan-500/10 border-cyan-500/20 text-cyan-400">
+                                                        ORIGINAL PRODUCT
                                                     </div>
                                                     <span className="text-xs text-gray-500">Confidence: {analysisResult.confidence ? Math.round(analysisResult.confidence * 100) : 88}%</span>
                                                 </div>
