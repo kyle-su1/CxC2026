@@ -23,9 +23,10 @@ The system uses a **multi-stage agentic pipeline** orchestrated by **LangGraph**
 
 ### **Stage 3: The Brain (Critique & Scoring)**
 **Goal**: Verify authenticity and calculate the value proposition.
-1.  **Skeptic Node**: Detects fake reviews and calculates the **Eco Score** (B Corp, materials, durability).
-2.  **Analysis Node**: Applies a **Weighted Scoring** model (Price, Quality, Trust, Eco) based on user preferences.
-3.  **Merge Node**: Syncs parallel outputs for final aggregation.
+1.  **Skeptic Node**: Detects fake reviews and calculates the **Eco Score**.
+2.  **Autonomous Refinement (Internal Loop)**: If the Skeptic detects "Low Trust" or "Insufficient Data," it triggers a **Veto** and routes back to **Stage 2** with localized search parameters to find better data.
+3.  **Analysis Node**: Applies a **Weighted Scoring** model based on user preferences.
+4.  **Merge Node**: Syncs parallel outputs for final aggregation.
 
 ### **Stage 4: Interaction (Chat & Response)**
 **Goal**: Communicate results and handle follow-up queries.
@@ -34,9 +35,7 @@ The system uses a **multi-stage agentic pipeline** orchestrated by **LangGraph**
 
 ### **System Orchestration Flow**
 
-```
-placeholder image
-```
+![alt text](image.png)
 
 ---
 

@@ -73,8 +73,7 @@ Access apps at:
 
 The system uses a **multi-stage agentic pipeline** orchestrated by **LangGraph**.
 
-```placeholder image
-```
+![alt text](image.png)
 
 👉 **[Read the full Architecture Documentation](docs/architecture.md)** for detailed node responsibilities, scoring logic, and data flow.
 
