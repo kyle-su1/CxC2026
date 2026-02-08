@@ -13,7 +13,7 @@ const formatMessage = (content) => {
             const bulletContent = line.trim().substring(2);
             return (
                 <div key={lineIdx} className="flex items-start gap-2 ml-2">
-                    <span className="text-indigo-400 mt-0.5">•</span>
+                    <span className="text-emerald-400 mt-0.5">•</span>
                     <span>{formatInlineStyles(bulletContent)}</span>
                 </div>
             );
@@ -24,7 +24,7 @@ const formatMessage = (content) => {
         if (numberedMatch) {
             return (
                 <div key={lineIdx} className="flex items-start gap-2 ml-2">
-                    <span className="text-indigo-400 font-medium min-w-[1rem]">{numberedMatch[1]}.</span>
+                    <span className="text-emerald-400 font-medium min-w-[1rem]">{numberedMatch[1]}.</span>
                     <span>{formatInlineStyles(numberedMatch[2])}</span>
                 </div>
             );
@@ -79,7 +79,7 @@ const formatInlineStyles = (text) => {
         } else if (first.type === 'italic') {
             parts.push(<em key={key++} className="italic text-gray-300">{content}</em>);
         } else if (first.type === 'code') {
-            parts.push(<code key={key++} className="px-1.5 py-0.5 bg-black/40 text-indigo-300 rounded text-xs font-mono">{content}</code>);
+            parts.push(<code key={key++} className="px-1.5 py-0.5 bg-black/40 text-emerald-300 rounded text-xs font-mono">{content}</code>);
         }
 
         remaining = remaining.substring(first.match.index + first.match[0].length);
@@ -137,31 +137,37 @@ const ChatInterface = ({
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3 border border-white/10 rounded-xl bg-[#0d0d0f]">
                 {chatMessages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center">
-                        <p className="text-gray-500 text-sm">
+                    <div className="h-full flex flex-col items-center justify-center text-center animate-fade-in">
+                        <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        <p className="text-gray-400 text-sm font-medium">
                             Ask about any item in the image
                         </p>
-                        <p className="text-gray-600 text-xs mt-1">
-                            e.g., "What is this phone?" or "Where can I buy this keyboard?"
+                        <p className="text-gray-600 text-xs mt-2 max-w-[200px]">
+                            e.g., "What is this phone?" or "Find the best price for this"
                         </p>
                     </div>
                 ) : (
                     chatMessages.map((msg, idx) => (
                         <div
                             key={idx}
-                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+                            style={{ animationDelay: `${idx * 50}ms` }}
                         >
                             <div
-                                className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${msg.role === 'user'
-                                    ? 'bg-indigo-600 text-white rounded-br-sm'
-                                    : 'bg-white/10 text-gray-200 rounded-bl-sm'
+                                className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
+                                    ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-br-md shadow-lg shadow-emerald-500/10'
+                                    : 'bg-white/5 border border-white/10 text-gray-200 rounded-bl-md'
                                     }`}
                             >
                                 {msg.isThinking ? (
-                                    <div className="flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    <div className="flex items-center gap-1.5 py-1">
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                     </div>
                                 ) : msg.role === 'assistant' ? (
                                     formatMessage(msg.content)
@@ -186,12 +192,12 @@ const ChatInterface = ({
                         onKeyPress={handleKeyPress}
                         placeholder={disabled ? "Upload an image first..." : "Ask about any item..."}
                         disabled={disabled || isAnalyzing}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     />
                     <button
                         onClick={handleSend}
                         disabled={!inputValue.trim() || disabled || isAnalyzing}
-                        className="p-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg transition-colors"
+                        className="p-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-lg transition-colors"
                     >
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

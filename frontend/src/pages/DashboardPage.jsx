@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import ImageUploader from '../components/ImageUploader'
 import LogoutButton from '../components/LogoutButton'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -9,6 +9,146 @@ import ChatInterface from '../components/ChatInterface';
 import ScanningOverlay from '../components/ScanningOverlay';
 import AgentStatusDisplay from '../components/AgentStatusDisplay';
 import BoundingBoxOverlay from '../components/BoundingBoxOverlay';
+import Logo from '../components/Logo';
+
+const SafeImage = ({ src, alt, className, fallback }) => {
+    const [error, setError] = useState(false);
+    useEffect(() => setError(false), [src]);
+
+    if (!src || error) {
+        return fallback || (
+            <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-white/5 gap-2">
+                <svg className="w-8 h-8 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs">No Preview</span>
+            </div>
+        );
+    }
+    return <img src={src} alt={alt} className={className} onError={() => setError(true)} referrerPolicy="no-referrer" />;
+};
+
+const ProductModal = ({ product, onClose }) => {
+    if (!product) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="bg-[#121214] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-2xl" onClick={e => e.stopPropagation()}>
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 rounded-full bg-black/40 hover:bg-white/10 text-gray-400 hover:text-white transition-colors z-10"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                    <div className="relative aspect-square md:aspect-auto md:h-full bg-black/40">
+                        <SafeImage
+                            src={product.image || product.thumbnail || product.image_url}
+                            alt={product.name}
+                            className="w-full h-full object-contain"
+                        />
+                    </div>
+
+                    <div className="p-8 flex flex-col h-full bg-[#18181b]">
+                        <h2 className="text-2xl font-bold text-white mb-2">{product.name}</h2>
+                        <div className="flex items-center gap-2 mb-6">
+                            <span className="text-xl font-bold text-emerald-400">{product.price_text || "Price N/A"}</span>
+                            {product.eco_score !== undefined && (
+                                <span className="bg-green-900/40 px-2 py-1 rounded text-xs font-mono text-green-300 border border-green-500/30">
+                                    🌱 {Math.round((product.eco_score || 0.5) * 100)}% Eco Score
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="prose prose-invert prose-sm mb-8 flex-1 overflow-y-auto">
+                            <h3 className="text-gray-400 uppercase text-xs font-bold tracking-wider mb-2">Analysis</h3>
+                            <p className="text-gray-300 leading-relaxed">{product.reason || product.description || "No detailed description available."}</p>
+
+                            <div className="mt-4 grid grid-cols-2 gap-4">
+                                <div className="bg-white/5 p-3 rounded-lg border border-white/5">
+                                    <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Match Score</span>
+                                    <span className="text-lg font-mono text-white">{Math.round(product.score || 0)}/100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-auto pt-6 border-t border-white/10">
+                            {product.link ? (
+                                <a
+                                    href={product.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <span>View on Store</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            ) : (
+                                <button disabled className="w-full py-3 bg-white/5 text-gray-500 font-semibold rounded-lg cursor-not-allowed">
+                                    Link Unavailable
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AlternativeCard = ({ alt, onSelect }) => {
+    return (
+        <div
+            onClick={() => onSelect(alt)}
+            className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-900/20 transition-all cursor-pointer group flex flex-col h-full active:scale-[0.98] duration-200"
+        >
+            {/* Alt Image Header */}
+            <div className="h-40 bg-black/40 relative overflow-hidden flex-shrink-0">
+                <SafeImage
+                    src={alt.image || alt.thumbnail || alt.image_url}
+                    alt={alt.name}
+                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                />
+                <div className="absolute top-2 right-2 flex gap-1">
+                    <span className="bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-white border border-white/10">
+                        Score: {Math.round(alt.score || 0)}
+                    </span>
+                    {alt.eco_score !== undefined && (
+                        <span className="bg-green-900/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-green-300 border border-green-500/30" title="Environmental Friendliness">
+                            🌱 {Math.round((alt.eco_score || 0.5) * 100)}%
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="p-4 flex flex-col flex-1">
+                <h4 className="font-semibold text-white mb-1 line-clamp-1 group-hover:text-emerald-400 transition-colors" title={alt.name}>{alt.name}</h4>
+                <p className="text-xs text-gray-400 mb-3 line-clamp-2">{alt.reason}</p>
+
+                <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
+                    <div className="text-sm font-medium text-white">
+                        {alt.price_text || "Price N/A"}
+                    </div>
+                    {alt.link ? (
+                        <a
+                            href={alt.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-white text-black px-3 py-1.5 rounded-md hover:bg-emerald-400 hover:text-black transition-colors font-medium z-10 relative"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            View Item
+                        </a>
+                    ) : (
+                        <span className="text-xs text-gray-600 cursor-not-allowed">No Link</span>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const DashboardPage = () => {
     const { user, getAccessTokenSilently, isLoading, logout, isAuthenticated } = useAuth0()
@@ -25,6 +165,7 @@ const DashboardPage = () => {
     // Follow-up conversation state
     const [threadId, setThreadId] = useState(null);
     const [sessionState, setSessionState] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
 
     // Poll backend health
     useEffect(() => {
@@ -52,6 +193,7 @@ const DashboardPage = () => {
         setThreadId(null);
         setSessionState(null);
         setChatMessages([]);
+        setSelectedProduct(null);
     }
 
     // Handle chat-based targeted analysis
@@ -157,27 +299,40 @@ const DashboardPage = () => {
         }
     };
 
-    if (isLoading) return <div className="text-white">Loading...</div>;
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-[#08090A] text-white">
+            <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-gray-400">Loading...</span>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-[#0B0C10] text-white font-sans selection:bg-purple-500/30 relative overflow-hidden">
-            {/* Gradient for dashboard - simplified */}
+        <div className="min-h-screen bg-[#08090A] text-white font-sans selection:bg-emerald-500/30 relative overflow-hidden">
+            {/* Gradient for dashboard - green theme */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-[0%] right-[0%] w-[40%] h-[40%] rounded-full bg-purple-900/10 blur-[100px]" />
-                <div className="absolute bottom-[0%] left-[0%] w-[40%] h-[40%] rounded-full bg-blue-900/10 blur-[100px]" />
+                <div className="absolute top-[0%] right-[0%] w-[40%] h-[40%] rounded-full bg-emerald-900/15 blur-[100px]" />
+                <div className="absolute bottom-[0%] left-[0%] w-[40%] h-[40%] rounded-full bg-violet-900/10 blur-[100px]" />
             </div>
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none"></div>
 
-
-            <div className="relative w-full max-w-[95vw] mx-auto px-4 py-8 flex flex-col min-h-screen">
+            <div className="relative w-full max-w-[98vw] mx-auto px-6 py-6 flex flex-col min-h-screen">
                 {/* Header */}
-                <header className="flex items-center justify-between mb-12">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-gradient-to-tr from-indigo-500 to-purple-500" />
-                        <span className="font-semibold text-sm tracking-wide text-white">CxC 2026 Dashboard</span>
-                    </div>
-                    <div className="flex items-center gap-4 bg-white/5 pr-2 pl-4 py-1.5 rounded-full border border-white/5 hover:border-white/10 transition-colors">
-                        <span className="text-xs font-medium text-gray-400">Welcome, {user?.name}</span>
+                <header className="flex items-center justify-between mb-8 animate-fade-in-up">
+                    <Link to="/" className="flex items-center gap-3 group cursor-pointer" title="Return to landing page">
+                        <Logo className="w-8 h-8 transition-all duration-300 group-hover:scale-110 group-hover:rotate-[360deg]" />
+                        <div className="flex flex-col">
+                            <span className="font-bold text-lg tracking-tight text-white group-hover:text-emerald-400 transition-colors">ifyShop</span>
+                            <span className="text-[10px] text-gray-500 font-medium tracking-wide opacity-0 group-hover:opacity-100 transition-opacity">← Back to home</span>
+                        </div>
+                    </Link>
+                    <div className="flex items-center gap-4 glass-panel px-5 py-2.5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-xs font-medium text-gray-300">Welcome, <span className="text-white">{user?.name}</span></span>
+                        </div>
+                        <div className="w-px h-4 bg-white/10" />
                         <LogoutButton />
                     </div>
                 </header>
@@ -186,12 +341,12 @@ const DashboardPage = () => {
                 <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-1">
 
                     {/* Left Panel: Upload - Collapsible */}
-                    <div className={`${isImageCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'} glass-panel rounded-2xl p-1 transition-all duration-300 hover:border-white/20`}>
+                    <div className={`${isImageCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up`} style={{ animationDelay: '100ms' }}>
                         <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-blue-400/80 uppercase tracking-wider mb-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                    {!isImageCollapsed && 'Input'}
+                                    {!isImageCollapsed && 'Product Image'}
                                 </div>
                                 {imageBase64 && (
                                     <button
@@ -222,11 +377,11 @@ const DashboardPage = () => {
                                     ) : (
                                         <div className="relative rounded-xl overflow-hidden border border-white/10 group flex-1 bg-black/40 flex items-center justify-center">
                                             {/* Image wrapper for proper bounding box positioning */}
-                                            <div className="relative inline-block max-w-full max-h-[400px]">
+                                            <div className="relative inline-block max-w-full max-h-[60vh]">
                                                 <img
                                                     src={imageBase64}
                                                     alt="Analyzed Item"
-                                                    className="block max-w-full max-h-[400px] h-auto w-auto"
+                                                    className="block max-w-full max-h-[60vh] h-auto w-auto"
                                                 />
 
                                                 {/* CHATBOT BOUNDING BOX - positioned relative to the image */}
@@ -243,15 +398,17 @@ const DashboardPage = () => {
                                             <ScanningOverlay isScanning={isAnalyzing} />
 
                                             {/* Change Image Button */}
-                                            {!isAnalyzing && (
-                                                <button
-                                                    onClick={() => { setImageBase64(null); setImageFile(null); setAnalysisResult(null); }}
-                                                    className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full backdrop-blur-sm transition-colors z-20"
-                                                    title="Remove Image"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                                </button>
-                                            )}
+                                            <button
+                                                onClick={() => { setImageBase64(null); setImageFile(null); setAnalysisResult(null); }}
+                                                disabled={isAnalyzing}
+                                                className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition-colors z-20 ${isAnalyzing
+                                                    ? 'bg-black/40 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-black/60 hover:bg-black/80 text-white'
+                                                    }`}
+                                                title="Remove Image"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -260,13 +417,13 @@ const DashboardPage = () => {
                     </div>
 
                     {/* Middle Panel: Chat */}
-                    <div className={`${isImageCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} glass-panel rounded-2xl p-1 transition-all duration-300 hover:border-white/20`}>
+                    <div className={`${isImageCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up`} style={{ animationDelay: '200ms' }}>
                         <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
-                                Chat
+                                AI Assistant
                             </h3>
                             <div className="flex-1">
                                 <ChatInterface
@@ -282,11 +439,11 @@ const DashboardPage = () => {
                     </div>
 
                     {/* Right Panel: Results */}
-                    <div className={`${isImageCollapsed ? 'lg:col-span-7' : 'lg:col-span-5'} glass-panel rounded-2xl p-1 overflow-hidden`}>
+                    <div className={`${isImageCollapsed ? 'lg:col-span-7' : 'lg:col-span-5'} glass-panel rounded-2xl p-1 overflow-hidden transition-all duration-500 hover:border-violet-500/20 animate-fade-in-up`} style={{ animationDelay: '300ms' }}>
                         <div className="bg-[#121214] rounded-xl p-6 h-full flex flex-col overflow-y-auto">
-                            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-violet-400/80 uppercase tracking-wider mb-4 flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                Agent Output
+                                Analysis Results
                             </h3>
 
                             {/* VISUAL RESULTS */}
@@ -318,15 +475,11 @@ const DashboardPage = () => {
                                                 <div className="flex flex-col md:flex-row gap-6">
                                                     {/* Main Image */}
                                                     <div className="w-full md:w-1/3 aspect-square rounded-xl bg-black/40 border border-white/10 overflow-hidden relative group">
-                                                        {analysisResult.active_product?.image_url || analyzedImage ? (
-                                                            <img
-                                                                src={analysisResult.active_product?.image_url || analyzedImage}
-                                                                alt="Main Product"
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">No Image</div>
-                                                        )}
+                                                        <SafeImage
+                                                            src={analysisResult.active_product?.image_url || analyzedImage}
+                                                            alt="Main Product"
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                        />
 
                                                         {analysisResult.active_product?.purchase_link && (
                                                             <a
@@ -402,55 +555,17 @@ const DashboardPage = () => {
                                     {analysisResult.alternatives && analysisResult.alternatives.length > 0 && (
                                         <div>
                                             <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                                                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                                                 Top Alternatives
                                             </h3>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                                                 {analysisResult.alternatives.map((alt, idx) => (
-                                                    <div key={idx} className="bg-white/5 border border-white/5 rounded-xl overflow-hidden hover:border-white/20 transition-all group flex flex-col h-full">
-                                                        {/* Alt Image Header */}
-                                                        <div className="h-40 bg-black/40 relative overflow-hidden flex-shrink-0">
-                                                            {alt.image ? (
-                                                                <img src={alt.image} alt={alt.name} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-gray-700 bg-white/5">No Image</div>
-                                                            )}
-                                                            <div className="absolute top-2 right-2 flex gap-1">
-                                                                <span className="bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-white border border-white/10">
-                                                                    Score: {Math.round(alt.score || 0)}
-                                                                </span>
-                                                                {alt.eco_score !== undefined && (
-                                                                    <span className="bg-green-900/60 backdrop-blur-md px-2 py-1 rounded text-xs font-mono text-green-300 border border-green-500/30" title="Environmental Friendliness">
-                                                                        🌱 {Math.round((alt.eco_score || 0.5) * 100)}%
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="p-4 flex flex-col flex-1">
-                                                            <h4 className="font-semibold text-white mb-1 line-clamp-1" title={alt.name}>{alt.name}</h4>
-                                                            <p className="text-xs text-gray-400 mb-3 line-clamp-2">{alt.reason}</p>
-
-                                                            <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between">
-                                                                <div className="text-sm font-medium text-white">
-                                                                    {alt.price_text || "Price N/A"}
-                                                                </div>
-                                                                {alt.link ? (
-                                                                    <a
-                                                                        href={alt.link}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="text-xs bg-white text-black px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors font-medium"
-                                                                    >
-                                                                        View Item
-                                                                    </a>
-                                                                ) : (
-                                                                    <span className="text-xs text-gray-600 cursor-not-allowed">No Link</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <AlternativeCard
+                                                        key={idx}
+                                                        alt={alt}
+                                                        onSelect={setSelectedProduct}
+                                                    />
                                                 ))}
                                             </div>
                                         </div>
@@ -486,6 +601,12 @@ const DashboardPage = () => {
                     </div>
                 </div>
             </div>
+            {selectedProduct && (
+                <ProductModal
+                    product={selectedProduct}
+                    onClose={() => setSelectedProduct(null)}
+                />
+            )}
         </div>
     )
 }

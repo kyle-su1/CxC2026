@@ -22,9 +22,9 @@ const ScanningOverlay = ({ isScanning }) => {
             ></div>
 
             {/* 3. The Scan Line (The "Light Beam") */}
-            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#5E6AD2] to-transparent shadow-[0_0_20px_2px_rgba(94,106,210,0.6)] animate-linear-scan">
+            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_20px_2px_rgba(16,185,129,0.6)] animate-linear-scan">
                 {/* Trailing fade gradient */}
-                <div className="absolute bottom-full left-0 right-0 h-24 bg-gradient-to-t from-[#5E6AD2]/20 to-transparent"></div>
+                <div className="absolute bottom-full left-0 right-0 h-24 bg-gradient-to-t from-emerald-500/20 to-transparent"></div>
             </div>
 
             {/* 4. Focus Corners (Refined) */}
