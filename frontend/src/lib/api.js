@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+let apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+if (import.meta.env.VITE_API_BASE_URL && !apiUrl.startsWith('http')) {
+    apiUrl = `https://${apiUrl}`;
+}
+const API_URL = apiUrl;
 
 export const analyzeImage = async (file, token, options = {}) => {
     try {
