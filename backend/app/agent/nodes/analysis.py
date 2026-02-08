@@ -221,9 +221,9 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
             product_name_lower = alt.get('name', '').lower()
             for brand in preferred_brands:
                 if brand.lower() in product_name_lower:
-                    # Apply a massive 20 point bonus (out of 100) to Total Score to Ensure Stickiness
-                    # This ensures preferred brands override minor price/sentiment differences
-                    brand_bonus = 20.0 
+                    # Apply a massive 50 point bonus (out of 100) to Total Score to Ensure Stickiness
+                    # This ensures preferred brands override almost anything else
+                    brand_bonus = 50.0 
                     score_obj.total_score += brand_bonus
                     matched_brand = brand
                     break
@@ -254,8 +254,8 @@ def node_analysis_synthesis(state: AgentState) -> Dict[str, Any]:
     start_time = time.time()
     print(f"   [Analysis] Processing {len(alternatives)} candidates in parallel...")
     
-    # Reduce max_workers to 3 to avoid hitting Gemini Rate Limits (RPM) which cause exponential backoff
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    # Reduce max_workers to 5 to avoid hitting Gemini Rate Limits (RPM) which cause exponential backoff
+    with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_alt = {executor.submit(process_candidate, alt): alt for alt in alternatives}
         for future in as_completed(future_to_alt):
             try:
