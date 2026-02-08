@@ -187,13 +187,21 @@ Return ONLY valid JSON, no markdown."""),
         
 Extracted preferences: {new_prefs}
 
-Confirm that you understood their budget constraint and let them know you're re-analyzing the products with their new preferences. Be concise and helpful."""
+Confirm that you understood their budget constraint.
+IMPORTANT: You MUST explicitly mention the specific change you are making based on the preferences above.
+Example: "Got it, I'll update the search to find items under $500." or "Understood, I'll prioritize cheaper options."
+Do not just say "I've updated your preferences."
+Be concise and helpful."""
     elif router_decision == "re_search":
         system_text = f"""You are a helpful Shopping Assistant. The user wants different products based on their preferences.
         
 Extracted preferences: {search_criteria}
 
-Confirm that you understood their preferences and let them know you're searching for new alternatives. Be concise and helpful."""
+Confirm that you understood their preferences.
+IMPORTANT: You MUST explicitly mention the specific change you are making based on the preferences above.
+Example: "Got it, I'll exclude red items." or "Understood, searching for Sony products."
+Do not just say "I've updated your preferences."
+Be concise and helpful."""
     else:
         system_text = """You are a helpful Shopping Assistant. 
 You have access to the user's current analysis session.

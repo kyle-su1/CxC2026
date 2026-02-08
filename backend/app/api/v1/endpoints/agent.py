@@ -453,12 +453,21 @@ async def chat_followup(request: ChatFollowupRequest, current_user: User = Depen
         
         chat_response = final_rec.get("chat_response", "")
         
+        # If chat_response not in final_rec, extract from chat_history 
+        # (the chat node appends the assistant's response there)
+        if not chat_response:
+            chat_history = final_state.get("chat_history", [])
+            if chat_history:
+                # Get the last assistant message
+                for msg in reversed(chat_history):
+                    if msg.get("role") == "assistant":
+                        chat_response = msg.get("content", "")
+                        break
+        
         # If re-analysis occurred, get the updated analysis
         updated_analysis = None
         if router_decision in ["re_analysis", "re_search"]:
             updated_analysis = final_rec
-            if not chat_response:
-                chat_response = "I've updated the recommendations based on your preferences."
         
         if not chat_response:
             chat_response = "I'm not sure how to help with that. Can you rephrase?"

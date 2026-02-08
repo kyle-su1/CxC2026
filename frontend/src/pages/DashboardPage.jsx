@@ -10,6 +10,7 @@ import ScanningOverlay from '../components/ScanningOverlay';
 import AgentStatusDisplay from '../components/AgentStatusDisplay';
 import BoundingBoxOverlay from '../components/BoundingBoxOverlay';
 import Logo from '../components/Logo';
+import PreferencesModal from '../components/PreferencesModal';
 
 const SafeImage = ({ src, alt, className, fallback }) => {
     const [error, setError] = useState(false);
@@ -222,6 +223,7 @@ const DashboardPage = () => {
     const [sessionState, setSessionState] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [isRefining, setIsRefining] = useState(false); // Visual loop state
+    const [isPreferencesOpen, setIsPreferencesOpen] = useState(false); // Preferences modal
 
     // Poll backend health
     useEffect(() => {
@@ -400,7 +402,6 @@ const DashboardPage = () => {
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs font-medium text-gray-300">Welcome, <span className="text-white">{user?.name}</span></span>
                         </div>
-                        <div className="w-px h-4 bg-white/10" />
                         <LogoutButton />
                     </div>
                 </header>
@@ -486,14 +487,25 @@ const DashboardPage = () => {
 
                     {/* Middle Panel: Chat */}
                     <div className={`${isImageCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'} glass-panel rounded-2xl p-1 transition-all duration-500 hover:border-emerald-500/20 animate-fade-in-up overflow-hidden`} style={{ animationDelay: '200ms' }}>
-                        <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col">
-                            <h3 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                AI Assistant
+                        <div className="bg-[#121214] rounded-xl p-4 h-full flex flex-col min-h-0">
+                            <h3 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    AI Assistant
+                                </div>
+                                <button
+                                    onClick={() => setIsPreferencesOpen(true)}
+                                    className="p-1.5 rounded-md hover:bg-white/10 text-gray-400 hover:text-emerald-400 transition-colors"
+                                    title="Preferences"
+                                >
+                                    <svg className="w-4 h-4 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                </button>
                             </h3>
-                            <div className="flex-1">
+                            <div className="flex-1 min-h-0">
                                 <ChatInterface
                                     imageBase64={imageBase64}
                                     onAnalysisStart={handleChatAnalyze}
@@ -724,6 +736,10 @@ const DashboardPage = () => {
                     onClose={() => setSelectedProduct(null)}
                 />
             )}
+            <PreferencesModal
+                isOpen={isPreferencesOpen}
+                onClose={() => setIsPreferencesOpen(false)}
+            />
         </div>
     )
 }

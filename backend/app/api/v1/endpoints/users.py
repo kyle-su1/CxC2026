@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from typing import Optional
 from pydantic import BaseModel
 from app.db.session import get_db
@@ -29,6 +30,8 @@ class PreferencesUpdate(BaseModel):
     durability: Optional[float] = None
     brand_reputation: Optional[float] = None
     environmental_impact: Optional[float] = None
+    quality: Optional[float] = None
+    eco_friendly: Optional[float] = None
 
 
 @router.get("/me", response_model=UserSchema)
@@ -58,8 +61,13 @@ def update_user_preferences(
         current_prefs["brand_reputation"] = prefs.brand_reputation
     if prefs.environmental_impact is not None:
         current_prefs["environmental_impact"] = prefs.environmental_impact
+    if prefs.quality is not None:
+        current_prefs["quality"] = prefs.quality
+    if prefs.eco_friendly is not None:
+        current_prefs["eco_friendly"] = prefs.eco_friendly
     
     current_user.preferences = current_prefs
+    flag_modified(current_user, 'preferences')  # Force SQLAlchemy to detect JSON mutation
     db.commit()
     db.refresh(current_user)
     return current_user
